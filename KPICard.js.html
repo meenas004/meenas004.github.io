@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: KPICard.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: KPICard.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import React from 'react';
+import {Modal, TextField, Grid, IconButton, Button} from '@material-ui/core';
+import AddIcon from '@material-ui/icons/Add';
+import {FileCopy, Delete} from '@material-ui/icons';
+
+/**
+ * Custom components for taking inputs for KPI cards
+ * The components are rows of 4 text inputs which for heading, value, subtext and tooltip
+ */
+class KPICard extends React.Component{
+    constructor(props){
+        super(props)
+        this.state = { 
+            array: [{heading: null, value: null, subtext: null, tooltip: null}]
+        }
+    }
+    /**
+     * Row components. 
+     * @param {*} props 
+     */
+    KpiRow = (props) => &lt;Grid container xs = {12}> 
+                    &lt;Grid item xs = {3} className="custom-inp-fields custom-tooltip mr-left-right-5 form-input-custom-box mr-top-1">&lt;TextField onChange= {(e) => {this.handleChange(props.values[0], props.i, e.target.value)}} value = {props.state.heading} label = {props.labels[0]}/>&lt;/Grid>
+                    &lt;Grid item xs = {3} className="custom-inp-fields custom-tooltip mr-left-right-5 form-input-custom-box mr-top-1">&lt;TextField onChange= {(e) => {this.handleChange(props.values[1], props.i, e.target.value)}} value = {props.state.value} label = {props.labels[1]}/>&lt;/Grid>
+                    &lt;Grid item xs = {3} className="custom-inp-fields custom-tooltip mr-left-right-5 form-input-custom-box mr-top-1">&lt;TextField onChange= {(e) => {this.handleChange(props.values[2], props.i, e.target.value)}} value = {props.state.subtext} label = {props.labels[2]}/>&lt;/Grid>
+                    &lt;Grid item xs = {3} className="custom-inp-fields custom-tooltip mr-left-right-5 form-input-custom-box mr-top-1">&lt;TextField label = {props.labels[3]} value = {props.tooltip} onChange= {(e) => {this.handleChange(props.values[3], props.i, e.target.value)}} value={props.state.tooltip} />&lt;/Grid>
+                &lt;/Grid>
+
+    /**
+     * Function to handle input change
+     * @param {string} elType element type
+     * @param {string} i row number
+     * @param {string} value value of the field 
+     */
+    handleChange = (elType, i, value) => {
+        let stateArr = JSON.parse(JSON.stringify(this.state.array))
+        stateArr[i][elType] = value;
+        this.setState({
+            array: stateArr
+        }, this.props.handleChange(stateArr, this.props.pos, this.props.parent_pos, this.props.el_pos, this.props.id))
+        
+    }
+
+    /**
+     * Function to add additional rows. Gets called when add row button is clicked 
+     */
+    addRow = () => {
+        let stateArr = this.state.array;
+        stateArr[stateArr.length] = {heading: null, value: null, subtext: null, tooltip: null}
+        this.setState({
+            array: stateArr
+        })
+    } 
+    componentDidMount(){
+        if(this.props.selectedOption){
+            this.setState({
+                array: this.props.selectedOption
+            })
+        }
+    }
+
+    /**
+     * Function to delete last row
+     */
+    delRow = () => {
+        let stateArr = this.state.array;
+        
+        stateArr.splice(-1, 1);
+        this.setState({
+            array: stateArr
+        })
+    }
+    render(){
+        return(
+            &lt;div class = {'kpi_card_div'}>
+                &lt;Grid container xs={12} class = {'kpi_card'}>
+                    {
+                        (this.state.array.map((obj, i) => {
+                            return &lt;this.KpiRow key = {i} state = {obj} i = {i} labels = {this.props.labels} values = {this.props.values}/>
+                        }))
+                    }
+                &lt;/Grid>
+                &lt;div style={{float: 'right'}}>
+                    &lt;IconButton color='default' onClick = {this.addRow}>&lt;AddIcon/>&lt;/IconButton>
+                    &lt;IconButton size = 'small'>&lt;Delete onClick = {this.delRow} />&lt;/IconButton>
+                &lt;/div>
+            &lt;/div>
+        )
+    }
+
+}
+
+export default KPICard;</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="KPICard.html">KPICard</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Mon May 03 2021 14:54:14 GMT+0530 (India Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

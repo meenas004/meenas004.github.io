@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: SunBurst.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: SunBurst.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import React, { Component } from "react";
+import * as d3 from "d3";
+import * as cu from "./ChartUtils"
+import { lab } from "d3";
+
+/**
+ * Component to drwa sunburst
+ * @component
+ * @property {string} valueLabel value label
+ * @property {string} configName unique name of the app
+ * @property {string} xaxisformat x axis format
+ * @property {string} yaxisformat y axis format
+ * @property {number} animation animation duration
+ * @property {array} data chart data
+ * @property {number} height chart height
+ * @property {number} width chart width
+ * @property {number} pos chart position 
+ * @property {string} legendContainer legend container div id
+ * @property {array} defined_colors color array
+ */
+
+class SunBurst extends Component {
+  componentDidMount() {
+    this.drawChart();
+  }
+
+  componentDidUpdate() {
+    this.drawChart()
+  }
+  drawChart() {
+    const globalColorScheme = /*this.props.color*/ d3.schemeSet2;
+    const margin = /*this.props.margin*/{ top: 10, right: 30, bottom: 30, left: 130 };
+    const anim_dur = this.props.animation;
+
+    const data = this.props.data
+    var width = this.props.width - margin.left - margin.right;
+    var height = this.props.height - margin.top - margin.bottom;
+    const legendContainer = "#" + this.props.legendContainer;
+    const chartContainer = this.props.chartContainer?this.props.chartContainer:"#" + "chart-container";
+
+    const value_format = this.props.value_format;
+    const radius = width / 7;
+    var valueLabel = this.props.valueLabel;
+
+    var partition = data => {
+      const root = d3.hierarchy(data)
+        .sum(d => d.size)
+        .sort((a, b) => b.value - a.value);
+      return d3.partition()
+        .size([2 * Math.PI, root.height + 1])
+        (root);
+    };
+
+    const arc = d3.arc()
+      .startAngle(d => d.x0)
+      .endAngle(d => d.x1)
+      .padAngle(d => Math.min((d.x1 - d.x0) / 2, 0.005))
+      .padRadius(radius * 1.5)
+      .innerRadius(d => d.y0 * radius)
+      .outerRadius(d => Math.max(d.y0 * radius, d.y1 * radius - 1));
+
+    const root = partition(data);
+
+    const color = cu.get_color(root, false, this.props.defined_colors);
+
+    root.each(d => d.current = d);
+    
+    var ini = cu.init_svg(chartContainer, null, margin, width, height)
+    cu.createCustomTooltip(chartContainer)
+    d3.select(chartContainer).select('svg').select(".trans")
+      .attr("transform", "translate(" + width * 0.5 + "," + height * 0.5 + ")")
+
+      cu.hideAxes(chartContainer);
+
+    var svg = d3.select(chartContainer).select('svg').select(".chart")
+
+    svg.selectAll("*").remove()
+    svg.append("g")
+      .attr('class', 'meta')
+    svg.append("g")
+      .attr('class', 'shapes')
+
+    const path = svg.select(".meta")
+      .selectAll("path")
+      .data(root.descendants().slice(1))
+      .join("path") 
+      .attr("fill", d => {
+        while (d.depth > 1) { d = d.parent; }
+        return color(d.data.name);
+      })
+      .attr("fill-opacity", d => arcVisible(d.current) ? (1-(d.depth)*0.2): 0);
+
+    path.each(function(d){tooltipEnableDisable(d,"current",this)})  
+   
+
+    path.filter(d => d.children)
+      .style("cursor", d => arcVisible(d)?"pointer": "")
+      .on("click", d => arcVisible(d)?clicked(d): null);
+
+   /*  cu.tooltip(path, function (res, that) {
+      return `${res.ancestors().map(res => res.data.name).slice(0, -1).reverse().join("/")}\nValue:${format(res.value)}`;
+    }) */
+    var group_length = path._groups[0].length;
+    var i_dur = anim_dur / group_length &lt; 50 ? 20 : i_dur;
+    path.transition().duration(anim_dur).delay((d, i) => { return i * i_dur })
+      .attr("d", d => arc(d.current));
+
+    const label = svg.select(".meta").append("g")
+      .attr("pointer-events", "none")
+      .attr("text-anchor", "middle")
+      .style("user-select", "none")
+      .selectAll("text")
+      .data(root.descendants().slice(1))
+      .join("text")
+      .attr("fill-opacity", d => +labelVisible(d.current))
+      .attr("transform", d => labelTransform(d.current))
+      .text(d => cu.formatString(d.data.name))
+      .attr("dy", "0.3838464em")
+
+    const parent = svg.select(".meta")
+      .append("circle")
+      .datum(root)
+      .attr("r", radius)
+      .attr("fill", "none")
+      .attr("pointer-events", "all")
+      .on("dblclick", clicked);
+
+    function clicked(p) {
+      debugger
+      // if(!arcVisible(p)) return null
+      parent.datum(p.parent || root);
+
+      root.each(d => d.target = {
+        x0: Math.max(0, Math.min(1, (d.x0 - p.x0) / (p.x1 - p.x0))) * 2 * Math.PI,
+        x1: Math.max(0, Math.min(1, (d.x1 - p.x0) / (p.x1 - p.x0))) * 2 * Math.PI,
+        y0: Math.max(0, d.y0 - p.depth),
+        y1: Math.max(0, d.y1 - p.depth)
+      });
+      const t = svg.transition().duration(anim_dur);
+      // Transition the data on all arcs, even the ones that aren’t visible,
+      // so that if this transition is interrupted, entering arcs will start
+      // the next transition from the desired position.
+      path.transition(t)
+        .tween("data", d => {
+          const i = d3.interpolate(d.current, d.target);
+          return t => d.current = i(t);
+        })
+        .filter(function (d) {
+          return +this.getAttribute("fill-opacity") || arcVisible(d.target);
+        })
+        .attr("fill-opacity", d => arcVisible(d.target) ? (1-(d.depth)*0.2) : 0)
+        .attrTween("d", d => () => arc(d.current));
+
+
+        path.each(function(d){tooltipEnableDisable(d,"target",this)})  
+
+      label.filter(function (d) {
+        return +this.getAttribute("fill-opacity") || labelVisible(d.target);
+      }).transition(t)
+        .attr("fill-opacity", d => +labelVisible(d.target))
+        .attrTween("transform", d => () => labelTransform(d.current));
+    }
+
+    function tooltipEnableDisable(ele,node,that){
+      var header=d3.select(that)
+      if(arcVisible(ele[node])){
+        header.on("mouseover", function (d, i, j) {
+          cu.showCustomTooltip(this,function () {
+            let value = d.value
+            let valText = (valueLabel) ? valueLabel : "Value"
+            let valFmt = (value_format) ? value_format : undefined
+            let layers = d.ancestors().slice(0, -1).reverse().map((d,i) => '='.repeat(i)+"> "+d.data.name).join('\n')
+            return cu.tooltip_text_formatter({}, undefined, undefined, undefined, undefined, undefined, layers, undefined, undefined, value, valText, valFmt, 2)            
+          });
+        })
+        .on("mousemove", function () {
+          cu.moveCustomTooltip(this)
+        })
+        .on("mouseleave", function (d) { cu.hideCustomTooltip();})
+      } 
+      else{
+        header.on("mouseover",null).on("mousemove",null).on("mouseleave",null)
+      }
+
+    }
+
+    function arcVisible(d) {
+      return d.y1 &lt;= 3 &amp;&amp; d.y0 >= 1 &amp;&amp; d.x1 > d.x0;
+    }
+
+    function labelVisible(d) {
+      return d.y1 &lt;= 3 &amp;&amp; d.y0 >= 1 &amp;&amp; (d.y1 - d.y0) * (d.x1 - d.x0) > 0.03;
+    }
+
+    function labelTransform(d) {
+      const x = (d.x0 + d.x1) / 2 * 180 / Math.PI;
+      const y = (d.y0 + d.y1) / 2 * radius;
+      return `rotate(${x - 90}) translate(${y},0) rotate(${x &lt; 180 ? 0 : 180})`;
+    }
+
+  }
+
+  render() {
+    return &lt;div>&lt;/div>
+  }
+}
+
+export default SunBurst;</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Bubble.html">Bubble</a></li><li><a href="BubbleChart.html">BubbleChart</a></li><li><a href="BubbleMap.html">BubbleMap</a></li><li><a href="ChoroplethChart.html">ChoroplethChart</a></li><li><a href="CirclePackedBubble.html">CirclePackedBubble</a></li><li><a href="D3DensityChart.html">D3DensityChart</a></li><li><a href="Funnel.html">Funnel</a></li><li><a href="GroupBarChart.html">GroupBarChart</a></li><li><a href="HeatChart.html">HeatChart</a></li><li><a href="HorizontalStackBarChart.html">HorizontalStackBarChart</a></li><li><a href="IntervalLineChart.html">IntervalLineChart</a></li><li><a href="LineChart.html">LineChart</a></li><li><a href="NetworkChart.html">NetworkChart</a></li><li><a href="SequncesSunburst.html">SequncesSunburst</a></li><li><a href="StackBarChart.html">StackBarChart</a></li><li><a href="SunBurst.html">SunBurst</a></li><li><a href="TreeChart.html">TreeChart</a></li><li><a href="ValueBox.html">ValueBox</a></li><li><a href="ValueBoxChain.html">ValueBoxChain</a></li></ul><h3>Global</h3><ul><li><a href="global.html#addReferenceLine">addReferenceLine</a></li><li><a href="global.html#appear">appear</a></li><li><a href="global.html#BootstrapTooltip">BootstrapTooltip</a></li><li><a href="global.html#calculateLeftMargin">calculateLeftMargin</a></li><li><a href="global.html#createCustomTooltip">createCustomTooltip</a></li><li><a href="global.html#formatNumber">formatNumber</a></li><li><a href="global.html#formatString">formatString</a></li><li><a href="global.html#get_color">get_color</a></li><li><a href="global.html#hideAxes">hideAxes</a></li><li><a href="global.html#hideCustomTooltip">hideCustomTooltip</a></li><li><a href="global.html#init_chart">init_chart</a></li><li><a href="global.html#init_svg">init_svg</a></li><li><a href="global.html#init_xaxis">init_xaxis</a></li><li><a href="global.html#init_yaxis">init_yaxis</a></li><li><a href="global.html#MakeValueBoxes">MakeValueBoxes</a></li><li><a href="global.html#moveCustomTooltip">moveCustomTooltip</a></li><li><a href="global.html#onClickChangeChart">onClickChangeChart</a></li><li><a href="global.html#secondAxisLineChart">secondAxisLineChart</a></li><li><a href="global.html#secondAxisScatterChart">secondAxisScatterChart</a></li><li><a href="global.html#show_legend">show_legend</a></li><li><a href="global.html#show_second_axis">show_second_axis</a></li><li><a href="global.html#show_x">show_x</a></li><li><a href="global.html#show_y">show_y</a></li><li><a href="global.html#showCustomTooltip">showCustomTooltip</a></li><li><a href="global.html#tooltip_text_formatter">tooltip_text_formatter</a></li><li><a href="global.html#useStylesBootstrap">useStylesBootstrap</a></li><li><a href="global.html#xAxisTickFormat">xAxisTickFormat</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Fri Apr 30 2021 17:19:11 GMT+0530 (India Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

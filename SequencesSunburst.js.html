@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: SequencesSunburst.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: SequencesSunburst.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import React, { Component } from "react";
+import * as d3 from "d3";
+import * as cu from "./ChartUtils";
+import csvData from "./visit_data.csv";
+import * as $ from 'jquery';
+import {scale, rotate, translate, compose, applyToPoint, toCSS, fromTransformAttribute, fromDefinition} from 'transformation-matrix';
+
+/**
+ * Component to draw sequences sunburst
+ * @component
+ * @property {json} props props to be used
+ * @property {array} defined_colors defined colors array
+ * @property {string} legendContainer legend container div id
+ */
+
+class SequncesSunburst extends Component {
+  constructor(props){
+    super(props);
+    this.breadcrumbPoints = this.breadcrumbPoints.bind(this);    
+  }
+
+  componentDidMount() {
+    this.drawChart();    
+    }
+
+  componentDidUpdate() {
+    this.drawChart();
+  }
+
+  drawChart() {
+    let isVertical = this.props.props.legend_position !== 'above';
+    var width = this.props.props.diameter ? this.props.props.diameter : 640;
+    var height = this.props.props.diameter ? this.props.props.diameter : 640;
+    var radius = width / 2;
+    var that = this;
+    let value_format=this.props.props.value_format
+    // d3.select('#chart_container').selectAll('svg').remove();
+   
+    var partition = (data) =>
+      d3.partition().size([2 * Math.PI, radius * radius])(
+        d3
+          .hierarchy(data)
+          .sum((d) => d.size)
+          .sort((a, b) => b.size - a.size)
+      );
+
+
+    var tooltipEnableDisable = (ele,node,that) =>{
+        
+        var header=d3.select(that);
+        // if(arcVisible(ele[node])){
+        // if(true){
+          header.on("mouseover", function (d, i, j) {
+            
+            cu.showCustomTooltip(this,function () {
+              // let valText = valueLabel?valueLabel:"Value"
+              // return `${d.ancestors().map(d => d.data.name).slice(0, -1).reverse().join("/")}\n ${valText}:${format(d.value)}`;
+              return 'Tooltip goes here'
+              });
+          })
+          .on("mousemove", function () {
+            cu.moveCustomTooltip(this)
+          })
+          .on("mouseleave", function (d) { cu.hideCustomTooltip();})
+
+    
+    }  
+    
+    var arc = d3
+    .arc()
+    .startAngle((d) => d.x0)
+    .endAngle((d) => d.x1)
+    .padAngle(1 / radius)
+    .padRadius(radius)
+    .innerRadius((d) => Math.sqrt(d.y0))
+    .outerRadius((d) => Math.sqrt(d.y1) - 1);
+    
+    var mousearc = d3
+      .arc()
+      .startAngle((d) => d.x0)
+      .endAngle((d) => d.x1)
+      .innerRadius((d) => Math.sqrt(d.y0))
+      .outerRadius(radius);   
+
+    var mouseover = (event, d) => {
+      // Get the ancestors of the current segment, minus the root
+      const sequence = event.ancestors().reverse().slice(1);
+      // Highlight the ancestors
+      path.attr("fill-opacity", (node) =>
+        sequence.indexOf(node) >= 0 ? 1.0 : 0.3
+      );
+
+      var percentage = ((100 * event.value) / root.value).toPrecision(3);
+      if (percentage &lt; 0.1) {
+        percentage = "&lt; 0.1";
+      }
+      var sequenceArray = this.getAncestors(event);
+
+      var b = {
+        w: isVertical?this.props.props.breadcrumb_height:this.props.props.breadcrumb_width,
+        h: isVertical?this.props.props.breadcrumb_width:this.props.props.breadcrumb_height,
+        s: 10,
+        t: 3,
+      };
+
+      // Data join; key function combines name and depth (position in sequence).
+      var g = d3
+        .select("#trail")
+        .selectAll("g")
+        .data(sequence, function (d) {
+          return d.data.name + d.depth;
+        });
+
+      // Add breadcrumb and label for entering nodes.
+      var entering = g
+        .enter()
+        .append("svg:g")
+        .attr("transform", function (d, i) {
+          return "translate(" + i * (b.w + b.s) + ", 0)";
+        });
+
+      entering
+        .append("svg:polygon")
+        .attr("points", this.breadcrumbPoints)
+        .style("fill", (d) => colors(d.data.name));
+
+      var breadcrumbFontSize = this.props.props.breadcrumbFontSize?this.props.props.breadcrumbFontSize+"px":"14px";
+      entering
+        .append("svg:text")
+        .attr("x", (b.w + b.t) / 2)
+        .attr("y", b.h / 2)
+        .attr("dy", "0.35em")
+        .attr("text-anchor", isVertical?"":"middle")
+        .text(function (d) {
+          return cu.formatString(d.data.name);          
+        })
+        .style("font-size", breadcrumbFontSize)
+        .style("transform", isVertical?"translate("+2*b.w+"px, -10px) rotateZ(90deg)": "");
+
+      g.exit().remove();
+
+      // Now move and update the percentage at the end.
+      d3.select("#trail")
+        .select("#endlabel")
+        .attr("x", (sequence.length + 0.5) * (b.w + b.s))
+        .attr("y", b.h / 2)
+        .attr("dy", "0.35em")
+        .attr("text-anchor", "middle")
+        .text(cu.formatNumber(percentage) + "% (" + cu.formatNumber(event.value, value_format) +")")
+        .style("writing-mode", isVertical?"vertical-rl":"");
+        // .style("transform", isVertical?"translate(0px, 0px) rotateZ(90deg)": "");
+
+      // Make the breadcrumb trail visible, if it's hidden.
+      d3.select("#trail").style("visibility", "");
+
+      //breadcrumbs update ends here
+      d3.selectAll("path").style("opacity", 0.3);
+
+      // Then highlight only those that are an ancestor of the current segment.
+      svg
+      .selectAll("path")
+      .filter(function (node) {
+        return sequenceArray.indexOf(node) >= 0;
+      })
+      .style("opacity", 1);
+
+      label
+      .style("visibility", null)
+      .select(".percentage")
+      .text(cu.formatNumber(percentage) + "% (" + cu.formatNumber(event.value, value_format) +")");
+    // Update the size of this view with the currently hovered sequence and percentage
+    var name =  event.data.name;
+    cu.showCustomTooltip(this, function () {
+      return  name +": "+ cu.formatNumber(event.value, value_format)
+    })
+    element.size = { sequence, percentage };
+    element.dispatchEvent(new CustomEvent("input"));
+    };
+
+
+
+    var mouseleave = (d) => {
+      // Hide the breadcrumb trail
+      d3.select("#trail").style("visibility", "hidden");
+
+      label.style("visibility", "hidden");
+
+      path.attr("fill-opacity", 1);
+
+      d3.selectAll("path").transition().duration(1000).style("opacity", 1);
+
+      d3.selectAll("path").style("opacity", 1);
+      d3.select("#trail").select("#endlabel").text("");
+    };
+    
+    var names = [];
+    var getNames = (node) => {
+      
+      if(node.children) {
+        names.push(node.data.name);
+        node.children.forEach(function(c) { getNames(c); });
+      }
+      return null
+    }
+
+    var data = this.props.props.data;
+    const margin = /*this.props.margin*/{ top: 10, right: 30, bottom: 30, left: 130 };
+    const root = partition(data);
+    // cu.init_svg("#seq_chart_container", "#" + this.props.legendContainer, margin, width, height)
+    cu.init_svg("#seq_chart_container", null, margin, width, height);
+    cu.createCustomTooltip("#seq_chart_container")
+    d3.select("#seq_chart_container")
+      .select('svg')
+      .select(".trans")
+      .attr("transform", "translate(" + width * 0.5 + "," + height * 0.5 + ")")
+    
+    cu.hideAxes("#seq_chart_container");
+    var svg = d3.select("#seq_chart_container").select('svg').select(".chart");
+    
+    svg.selectAll("*").remove()
+    svg.append("g")
+      .attr('class', 'meta')
+    svg.append("g")
+      .attr('class', 'shapes')
+
+    const element = svg.node();
+    element.size = {sequence: [], percentage: 0.0};
+
+    this.initializeBreadcrumbTrail();
+
+    var colors = cu.get_color(root, false, this.props.defined_colors);
+    getNames(root, this);
+    // cu.show_legend("#"+this.props.legendContainer, names, colors, false, false, 1)
+
+    const label = svg
+      .append("text")
+      .attr("text-anchor", "middle")
+      .attr("fill", "#888")
+      .style("visibility", "hidden");
+
+    label
+      .append("tspan")
+      .attr("class", "percentage")
+      .attr("x", 0)
+      .attr("y", 0)
+      .attr("dy", "-0.1em")
+      .attr("font-size", "2em")
+      .text("");
+
+    label
+      .append("tspan")
+      .attr("x", 0)
+      .attr("y", 0)
+      .attr("dy", "1.5em")
+      .text(cu.formatString(this.props.props.value_label));
+
+    svg
+      .attr("viewBox", `${-radius} ${-radius} ${width} ${width}`)
+      .style("max-width", `${width}px`)
+      .style("font", "12px sans-serif");
+
+    const path = svg.select(".meta")
+      .selectAll("path")
+      .data(
+        root.descendants().filter((d) => {
+          // Don't draw the root node, and for efficiency, filter out nodes that would be too small to see
+          return d.depth &amp;&amp; d.x1 - d.x0 > 0.001;
+        })
+      )
+      .join("path")
+      .attr("fill", (d) => {
+        return colors(d.data.name);
+      })
+      .attr("d", arc);
+
+      path.each(function(d){
+        if(d){
+          tooltipEnableDisable(d,"current",this)
+        }
+      })  
+
+    svg
+      .append("g")
+      .attr("fill", "none")
+      .attr("pointer-events", "all")
+      .on("mouseleave", mouseleave)
+      .selectAll("path")
+      .data(
+        root.descendants().filter((d) => {
+          return d.depth &amp;&amp; d.x1 - d.x0 > 0.001;
+        })
+      )
+      .join("path")
+      .attr("d", mousearc)
+      .on("mouseover", mouseover)
+      .on("mouseleave", function (d) { cu.hideCustomTooltip();});
+
+    if(isVertical){ 
+      let isLeft = this.props.props.legend_position === 'left';
+      let rightTranslateX =  (this.props.props.diameter + 160)*0.5 + 60;
+      let leftTranslateX =  (this.props.props.diameter)*0.5 - 20;
+      let radius = this.props.props.diameter*0.5;
+      let transformStringLeft =  "translate(-" + leftTranslateX + "px" +"," +(radius)+"px)" +" " +"rotate(-90deg)";
+      let transformStringRight = "translate(" + rightTranslateX + "px" +","+(radius)+"px)" +" "+ "rotate(-90deg)";
+      let transformString =  isLeft?transformStringLeft:transformStringRight;
+      var mTS = compose(fromDefinition(fromTransformAttribute('translate(-10, -10) scale(10, 10)'))); 
+      document.getElementById('bread_crumbs').style.transform = transformString
+    }else{
+      document.getElementById('bread_crumbs').style.transform = "rotate(0deg)"
+    }
+
+    return element;
+  }
+
+ 
+
+  buildHierarchy(csv) {
+    // Helper function that transforms the given CSV into a hierarchical format.
+    const root = { name: "root", children: [] };
+    for (let i = 0; i &lt; csv.length; i++) {
+      const sequence = csv[i]["node"];
+      const size = +csv[i]["size"];
+      if (isNaN(size)) {
+        continue;
+      }
+      const parts = sequence.split("-");
+      let currentNode = root;
+      for (let j = 0; j &lt; parts.length; j++) {
+        const children = currentNode["children"];
+        const nodeName = parts[j];
+        let childNode = null;
+        if (j + 1 &lt; parts.length) {
+          // Not yet at the end of the sequence; move down the tree.
+          let foundChild = false;
+          for (let k = 0; k &lt; children.length; k++) {
+            if (children[k]["name"] == nodeName) {
+              childNode = children[k];
+              foundChild = true;
+              break;
+            }
+          }
+          // If we don't already have a child node for this branch, create it.
+          if (!foundChild) {
+            childNode = { name: nodeName, children: [] };
+            children.push(childNode);
+          }
+          currentNode = childNode;
+        } else {
+          // Reached the end of the sequence; create a leaf node.
+          childNode = { name: nodeName, size: size };
+          children.push(childNode);
+        }
+      }
+    }
+    return root;
+  }
+
+  breadcrumbPoints(d, i) {
+    let isLeft = this.props.props.legend_position === 'left';
+    let isVertical = this.props.props.legend_position !== 'above';
+    if(isVertical){
+      var breadcrumb_height = this.props.props.breadcrumb_width;
+      var breadcrumb_width = this.props.props.breadcrumb_height;  
+    } else {
+      var breadcrumb_height = this.props.props.breadcrumb_height;
+      var breadcrumb_width = this.props.props.breadcrumb_width;
+    }
+    const tipWidth = 10;
+    const points = [];
+    points.push("0,0");
+    points.push(`${breadcrumb_width},0`);
+    points.push(`${breadcrumb_width + tipWidth}, ${breadcrumb_height / 2}`);
+    points.push(`${breadcrumb_width},${breadcrumb_height}`);
+    points.push(`0,${breadcrumb_height}`);
+    if (i > 0) {
+      // Leftmost breadcrumb; don't include 6th vertex.
+      points.push(`${tipWidth}, ${breadcrumb_height / 2}`);
+    }
+    return points.join(" ");
+  }
+
+  initializeBreadcrumbTrail() {
+    let isLeft = this.props.props.legend_position === 'left';
+    let isVertical = this.props.props.legend_position !== 'above';
+    // Add the svg area.
+    var trail = d3
+      .select("#bread_crumbs")
+      .append("svg:svg")
+      .attr("width", d3.select("#seq_chart_container").select('svg').style("width"))
+      .attr("height", isVertical?100:50)
+      .attr("id", "trail")
+    // Add the label at the end, for the percentage.
+    trail.append("svg:text").attr("id", "endlabel").attr("font-size", isVertical?"13px":"14px").style("fill", "#000");
+  }
+
+  getAncestors(node) {
+    var path = [];
+    var current = node;
+    while (current.parent) {
+      path.unshift(current);
+      current = current.parent;
+    }
+    return path;
+  }
+
+  render() {
+    let isLeft = this.props.props.legend_position === 'left';
+    let isVertical = this.props.props.legend_position !== 'above';
+    return (
+      &lt;div style ={{width: 'min-content', margin: 'auto'}}>
+        &lt;div style={{width: (this.props.props.diameter + "px"), height: "100px"}} id="bread_crumbs" onLoad={()=>{
+        }}>&lt;/div>
+        &lt;div style={{marginTop: isVertical?"-70px":"", marginLeft: isLeft?"70px":""}} id="seq_chart_container">&lt;/div>
+      &lt;/div>
+    );
+  }
+}
+
+export default SequncesSunburst;
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Bubble.html">Bubble</a></li><li><a href="BubbleChart.html">BubbleChart</a></li><li><a href="BubbleMap.html">BubbleMap</a></li><li><a href="ChoroplethChart.html">ChoroplethChart</a></li><li><a href="CirclePackedBubble.html">CirclePackedBubble</a></li><li><a href="D3DensityChart.html">D3DensityChart</a></li><li><a href="Funnel.html">Funnel</a></li><li><a href="GroupBarChart.html">GroupBarChart</a></li><li><a href="HeatChart.html">HeatChart</a></li><li><a href="HorizontalStackBarChart.html">HorizontalStackBarChart</a></li><li><a href="IntervalLineChart.html">IntervalLineChart</a></li><li><a href="LineChart.html">LineChart</a></li><li><a href="NetworkChart.html">NetworkChart</a></li><li><a href="SequncesSunburst.html">SequncesSunburst</a></li><li><a href="StackBarChart.html">StackBarChart</a></li><li><a href="SunBurst.html">SunBurst</a></li><li><a href="TreeChart.html">TreeChart</a></li><li><a href="ValueBox.html">ValueBox</a></li><li><a href="ValueBoxChain.html">ValueBoxChain</a></li></ul><h3>Global</h3><ul><li><a href="global.html#addReferenceLine">addReferenceLine</a></li><li><a href="global.html#appear">appear</a></li><li><a href="global.html#BootstrapTooltip">BootstrapTooltip</a></li><li><a href="global.html#calculateLeftMargin">calculateLeftMargin</a></li><li><a href="global.html#createCustomTooltip">createCustomTooltip</a></li><li><a href="global.html#formatNumber">formatNumber</a></li><li><a href="global.html#formatString">formatString</a></li><li><a href="global.html#get_color">get_color</a></li><li><a href="global.html#hideAxes">hideAxes</a></li><li><a href="global.html#hideCustomTooltip">hideCustomTooltip</a></li><li><a href="global.html#init_chart">init_chart</a></li><li><a href="global.html#init_svg">init_svg</a></li><li><a href="global.html#init_xaxis">init_xaxis</a></li><li><a href="global.html#init_yaxis">init_yaxis</a></li><li><a href="global.html#MakeValueBoxes">MakeValueBoxes</a></li><li><a href="global.html#moveCustomTooltip">moveCustomTooltip</a></li><li><a href="global.html#onClickChangeChart">onClickChangeChart</a></li><li><a href="global.html#secondAxisLineChart">secondAxisLineChart</a></li><li><a href="global.html#secondAxisScatterChart">secondAxisScatterChart</a></li><li><a href="global.html#show_legend">show_legend</a></li><li><a href="global.html#show_second_axis">show_second_axis</a></li><li><a href="global.html#show_x">show_x</a></li><li><a href="global.html#show_y">show_y</a></li><li><a href="global.html#showCustomTooltip">showCustomTooltip</a></li><li><a href="global.html#tooltip_text_formatter">tooltip_text_formatter</a></li><li><a href="global.html#useStylesBootstrap">useStylesBootstrap</a></li><li><a href="global.html#xAxisTickFormat">xAxisTickFormat</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Fri Apr 30 2021 17:19:11 GMT+0530 (India Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

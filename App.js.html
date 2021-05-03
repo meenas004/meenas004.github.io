@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: App.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: App.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>//importing required libraries
+import React from 'react';
+import './App.css';
+import {Grid, Typography, makeStyles, withStyles, Button} from '@material-ui/core';
+import ArrowUpwardIcon from '@material-ui/icons/ArrowUpward';
+import ScrollSnap from 'scroll-snap';
+import * as Layout from './app/layout';
+import {SectionsContainer, Section} from 'react-fullpage'
+import "fullpage.js/vendors/scrolloverflow"; // Optional. When using scrollOverflow:true
+import ReactFullpage from "@fullpage/react-fullpage";
+import * as Container from './app/container';
+import PropTypes  from 'prop-types';
+import * as d3 from 'd3';
+import GetApiData from './app/utils/getApiData';
+import ScrollUpButton from "react-scroll-up-button";
+import ReactLoading from "react-loading";
+//importing user-defined style
+import styleJson from './app/styles/root';
+// import * as configJson from './app/config_data.json'; //mock data
+import clsx from 'clsx';
+import {
+  BrowserRouter as Router,
+  Switch,
+  Route,
+  Link
+} from "react-router-dom";
+import {HotKeys} from 'react-hotkeys';
+import ProjectList from './app/pages/ProjectList';
+import ProjectPage from './app/pages/ProjectPage'
+import $ from 'jquery';
+import FormApp from './app/forms/FormApp';
+const request = require('request');
+
+
+
+/** Creates style object to attach to class using material UI */
+const styles = theme => (styleJson)
+
+//defining keymap for keyboard shortcuts
+const keyMap = {
+  EDIT_APP: "ctrl+shift+e"
+}
+
+//function to track window sizes
+function useWindowSize() {
+  const isClient = typeof window === 'object';
+  return {
+      width: isClient ? window.innerWidth : undefined,
+      height: isClient ? window.innerHeight : undefined
+    }
+}
+
+const ChartContext = React.createContext({
+  configName: null
+})
+
+  // defining App class
+  //App class is where magic really starts. It initiates required root level layouts, containers &amp; components
+
+  /**
+   * Component to control the highest level flow
+   * @component
+   * 
+   */
+class App extends React.Component{
+ /**
+  * State Variables being used in the app:
+  * @property {string} configName Unique name of the app
+  * @property {string} editable whether app is in editMode or not
+  * @property {string} enableEditMode whether to enable keyboard shortcuts or not [Doesn't work properly on DSS]
+  */
+  constructor(props){
+    super(props)
+    this.state={
+        visibleItem: 0, //Variable to keep track of visible item on screen [Element at position 1 is visible by default]
+        configName: null,
+        editable: null,
+        enableEditMode: null,
+        apiCalled: false
+    }
+  }
+  
+  /** 
+   * Change the app mode from editable to non-editable &amp; vice versa
+  */
+  changeAppMode = () => {
+    this.setState({
+      editable: !this.state.editable
+    })
+
+    if(!this.state.editable){
+      document.getElementById('app_container').style.background = 'rgb(245, 244, 241)'
+    }
+  }
+/**
+ * Sets the unique name of the app: 
+ * &lt;ul >
+ * &lt;li> If app is multi project app - Through project selection screen.
+ * &lt;li> If app is single project app - Sets the name without click event in project selection screen
+ * &lt;/ul>
+ * @param {string} config_name - Unique name of the app
+ */
+  hanldeConfigChange = (config_name) =>{
+    this.setState({
+      configName: config_name
+    })
+  }
+/** Runs only on local machine or development mode
+ * to get config name from the local backend. On DSS, it's available by default to the app
+ */
+  async componentDidMount(){
+		  if(process.env.REACT_APP_MODE === 'dev'){
+        let configName = await $.get('http://127.0.0.1:4005/get_conf_name')
+        if(!configName){
+          let configName = window.prompt("Enter Unique name for the app", "covid_form_story")
+          let apiOut = await $.get('http://127.0.0.1:4005/change_name/' + configName)
+          if(apiOut !== 'success'){
+            window.alert('some error occurred, default app will be loaded')
+          }
+        }
+        }
+
+}
+  
+  keyboardHandlers = {
+    EDIT_APP: this.changeAppMode
+  }
+  
+  /**
+   * Renders different components based on values of different state variables
+   * &lt;ol>
+   * &lt;li>(editable = true): Load FormApp (from forms/FormApp.js)
+   * &lt;li>(editable = true and (configName is set)): Load ProjectPage (pages/ProjectPage.js)
+   * &lt;li>(editable = true and configName = null): Load ProjectList (page/ProjectList.js)
+   * &lt;/ol>
+  */
+  render(){
+    const {classes} = this.props;  //attaching style json to props
+   
+    if(this.state.configName === null){
+      document.getElementsByTagName('body')[0].style.margin ='0px'
+    } else {
+      document.getElementsByTagName('body')[0].style.margin = '8px'
+    }
+
+    $(document).ready(function(){
+      $("#start_button_0").click()
+    })
+    return(
+      &lt;HotKeys keyMap={this.state.enableEditMode?keyMap:{}} handlers={this.state.enableEditMode?this.keyboardHandlers:{}}>
+        &lt;div id = 'app_container' style={{height: '100vh', width: '100%', backgroundSize: 'cover'}}>
+          {(this.state.enableEditMode === null) &amp;&amp; (this.state.editable === null) &amp;&amp; 
+          &lt;div>
+             &lt;Button id = 'start_button_0' onClick = {async () =>{
+           
+              if(this.state.apiCalled === false){
+                let url = process.env.REACT_APP_MODE === "dev"?'http://127.0.0.1:4005/getEditMode':window.getWebAppBackendUrl('getEditMode');
+                let result = await $.getJSON(url, function(output){
+                  return output
+                })
+                this.setState({
+                  editable: result.data.editMode,
+                  enableEditMode: result.data.editMode,
+                  apiCalled: true
+                })
+              }
+
+              }}>&lt;/Button>
+              &lt;div style ={{marginTop: '25vh', marginLeft: '93vh'}}>
+                &lt;ReactLoading type={'bars'} color={"gray"} heigh={'20%'} width={'20%'} />
+              &lt;/div>
+            &lt;/div>}
+          {this.state.enableEditMode &amp;&amp; this.state.editable &amp;&amp; &lt;FormApp handleChange = {this.changeAppMode}/>}
+          {(this.state.editable === false) &amp;&amp; this.state.configName &amp;&amp; &lt;ProjectPage  configName = {this.state.configName} /> }
+          {(this.state.editable === false) &amp;&amp; !this.state.configName &amp;&amp; &lt;div> &lt;ProjectList handleToUpdate = {this.hanldeConfigChange} /> &lt;/div>}
+        &lt;/div>
+      &lt;/HotKeys>
+    )
+  }
+}
+
+//adding props to App class
+App.proTypes = {
+  classes: PropTypes.object.isRequired
+}
+//exporting styled App class
+export default withStyles(styles)(App);</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="App.html">App</a></li></ul><h3>Global</h3><ul><li><a href="global.html#styles">styles</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Fri Apr 30 2021 16:05:33 GMT+0530 (India Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

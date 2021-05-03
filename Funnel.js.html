@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: Funnel.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: Funnel.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import React, { Component } from "react";
+import * as d3 from "d3";
+import * as cu from "./ChartUtils"
+import D3Funnel from 'd3-funnel';
+
+/**
+ * Component to draw Funnel chart
+ * @component 
+ * @property {string} configName unique name of the app
+ * @property {string} xaxisformat x axis (equivalent field) format
+ * @property {string} yaxisformat y axis format (equivalent field)
+ * @property {number} animation animation duration
+ * @property {json} data chart data
+ * @property {string} valueFormat value field format
+ * @property {string} valueLabel value label
+ */
+
+ class Funnel extends Component {
+    componentDidMount() {
+        this.drawChart()
+    }
+
+    componentDidUpdate(){
+        this.drawChart()
+      }
+      
+    drawChart() {
+        const data = this.props.data;
+        const margin = {top: 10, right: 30, bottom: 20, left: 100};
+        var width = this.props.width - margin.left - margin.right;
+        var height = this.props.height - margin.top - margin.bottom;       
+        const anim_dur = this.props.animation;  
+        var groups = data.map(d => {return d.label})
+        var color = cu.get_color(groups, false, this.props.defined_colors);
+        var valueFormat = this.props.valueFormat
+        var valueLabel = this.props.valueLabel
+        cu.hideCustomTooltip();
+        var svg = d3.select('#Funnel').select('svg')
+
+        if (svg.select('.chart').selectAll('path').size() === 0) {
+            svg.select('.chart').selectAll('*').remove()
+        }
+
+        svg.select('.trans').selectAll('*').remove()
+
+        if (svg.selectAll('.chart').size() === 0) {
+            svg.select('.trans').append("g")
+                .attr('class', 'chart')
+        }
+
+        svg
+            .attr("width", width)
+            .attr("height", height) 
+            .select(".trans") 
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")"); 
+
+        
+        const options = {
+            block: {
+                dynamicHeight: false,
+                minHeight: 50,
+                fill:{
+                    scale: color
+                }
+            },
+            chart: {
+                width: width,
+                height: height,
+                inverted: false,
+                horizontal: false,
+                animate: anim_dur,
+                curve: {
+                    enabled: true,
+                    height: 50,
+                    shade: -1,
+                },
+                totalCount: null,
+            },
+            label:{
+                enabled:true,
+                format: function(label, value){
+                    return cu.formatString(label) + ': ' + cu.formatNumber(value, valueFormat)
+                } 
+            },
+            tooltip: {
+                enabled: true,
+                format: function(label, value){
+                    return cu.tooltip_text_formatter({},undefined, undefined, undefined, undefined, undefined,label, undefined, undefined,value,valueLabel,valueFormat,2)
+                } 
+            }
+        };
+
+        const chart = new D3Funnel('#Funnel');
+        chart.draw(data, options);
+
+        var legendContainer = "#" + this.props.legendContainer;
+        d3.select(legendContainer).selectAll("*").remove();
+
+    }
+
+    render() {
+        return &lt;div id ='Funnel' >&lt;/div>
+    }
+
+}
+
+export default Funnel;
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Bubble.html">Bubble</a></li><li><a href="BubbleChart.html">BubbleChart</a></li><li><a href="BubbleMap.html">BubbleMap</a></li><li><a href="ChoroplethChart.html">ChoroplethChart</a></li><li><a href="CirclePackedBubble.html">CirclePackedBubble</a></li><li><a href="D3DensityChart.html">D3DensityChart</a></li><li><a href="Funnel.html">Funnel</a></li><li><a href="GroupBarChart.html">GroupBarChart</a></li><li><a href="HeatChart.html">HeatChart</a></li><li><a href="HorizontalStackBarChart.html">HorizontalStackBarChart</a></li><li><a href="IntervalLineChart.html">IntervalLineChart</a></li><li><a href="LineChart.html">LineChart</a></li><li><a href="NetworkChart.html">NetworkChart</a></li><li><a href="SequncesSunburst.html">SequncesSunburst</a></li><li><a href="StackBarChart.html">StackBarChart</a></li><li><a href="SunBurst.html">SunBurst</a></li><li><a href="TreeChart.html">TreeChart</a></li><li><a href="ValueBox.html">ValueBox</a></li><li><a href="ValueBoxChain.html">ValueBoxChain</a></li></ul><h3>Global</h3><ul><li><a href="global.html#addReferenceLine">addReferenceLine</a></li><li><a href="global.html#appear">appear</a></li><li><a href="global.html#BootstrapTooltip">BootstrapTooltip</a></li><li><a href="global.html#calculateLeftMargin">calculateLeftMargin</a></li><li><a href="global.html#createCustomTooltip">createCustomTooltip</a></li><li><a href="global.html#formatNumber">formatNumber</a></li><li><a href="global.html#formatString">formatString</a></li><li><a href="global.html#get_color">get_color</a></li><li><a href="global.html#hideAxes">hideAxes</a></li><li><a href="global.html#hideCustomTooltip">hideCustomTooltip</a></li><li><a href="global.html#init_chart">init_chart</a></li><li><a href="global.html#init_svg">init_svg</a></li><li><a href="global.html#init_xaxis">init_xaxis</a></li><li><a href="global.html#init_yaxis">init_yaxis</a></li><li><a href="global.html#MakeValueBoxes">MakeValueBoxes</a></li><li><a href="global.html#moveCustomTooltip">moveCustomTooltip</a></li><li><a href="global.html#onClickChangeChart">onClickChangeChart</a></li><li><a href="global.html#secondAxisLineChart">secondAxisLineChart</a></li><li><a href="global.html#secondAxisScatterChart">secondAxisScatterChart</a></li><li><a href="global.html#show_legend">show_legend</a></li><li><a href="global.html#show_second_axis">show_second_axis</a></li><li><a href="global.html#show_x">show_x</a></li><li><a href="global.html#show_y">show_y</a></li><li><a href="global.html#showCustomTooltip">showCustomTooltip</a></li><li><a href="global.html#tooltip_text_formatter">tooltip_text_formatter</a></li><li><a href="global.html#useStylesBootstrap">useStylesBootstrap</a></li><li><a href="global.html#xAxisTickFormat">xAxisTickFormat</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Fri Apr 30 2021 17:19:11 GMT+0530 (India Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

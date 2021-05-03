@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: ValueBox.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: ValueBox.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import React from "react";
+import Card from '@material-ui/core/Card';
+import Typography from '@material-ui/core/Typography';
+import Tooltip from '@material-ui/core/Tooltip';
+import CardActionArea from '@material-ui/core/CardActionArea';
+import CardActions from '@material-ui/core/CardActions';
+import CardContent from '@material-ui/core/CardContent';
+import ReactHtmlParser from 'react-html-parser';
+import ReactTooltip from 'react-tooltip';
+import AliceCarousel from 'react-alice-carousel';
+import * as cu from "./ChartUtils";
+import { isNumber } from "underscore";
+import styleJson from './../styles/styles';
+import { makeStyles } from "@material-ui/core";
+
+/**
+ * CSS classes
+ */
+const useStylesBootstrap = makeStyles((theme) => ({
+    arrow: {
+      color: '#cfcfcf',
+    },
+    tooltip: {
+      backgroundColor: '#cfcfcf',
+      fontSize: '16px'
+    },
+  }));
+
+  /**
+   * Creates Tooltip 
+   * @param {json} props props  
+   */
+function BootstrapTooltip(props) {
+    const classes = useStylesBootstrap();
+  
+    return &lt;Tooltip arrow classes={classes} {...props} />;
+}
+
+/**
+ * KPI Card component \n
+ * The component needs following attributes: \n
+ * 1. Heading 2. Value 3. Tooltip text 4. Color
+ */
+
+class ValueBox extends React.Component{
+    constructor(props){
+        super(props)
+    }
+    render(){
+        // const classes = useStyles();
+        return(
+            &lt;React.Fragment>
+            {(this.props.data.tooltip &amp;&amp; this.props.data.tooltip !== "") &amp;&amp; &lt;BootstrapTooltip title = {ReactHtmlParser(this.props.data.tooltip)} placement="top">
+            &lt;Card  style={{paddingBottom: "10px", marginLeft: '10px', marginRight: '10px', background: this.props.color?this.props.color:"white"}}>
+                &lt;CardContent>
+                    &lt;Typography gutterBottom variant="h5" component="h2" style={{color:this.props.color?this.props.color.title:"black"}}> {ReactHtmlParser(this.props.data.heading)} &lt;/Typography>
+                    &lt;Typography variant = "h4" component = "h1" color={this.props.color?this.props.color.value:"black"}>{ReactHtmlParser(this.props.data.value)}&lt;/Typography>
+                    &lt;Typography variant="body2" style={{color:this.props.color?this.props.color.subtext:"#E5E5E5"}}  component="p">{ReactHtmlParser(this.props.data.subtext)}&lt;/Typography>
+                &lt;/CardContent>
+            &lt;/Card>
+            &lt;/BootstrapTooltip>}
+            {(!this.props.data.tooltip || this.props.data.tooltip === "") &amp;&amp; 
+            &lt;Card  style={{paddingBottom: "10px", marginLeft: '10px', marginRight: '10px', background: this.props.color?this.props.color:"white"}}>
+                &lt;CardContent>
+                    &lt;Typography gutterBottom variant="h5" component="h2" style={{color:this.props.color?this.props.color.title:"black"}}> {ReactHtmlParser(this.props.data.heading)} &lt;/Typography>
+                    &lt;Typography variant = "h4" component = "h1" color={this.props.color?this.props.color.value:"black"}>{ReactHtmlParser(this.props.data.value)}&lt;/Typography>
+                    &lt;Typography variant="body2" style={{color:this.props.color?this.props.color.subtext:"#E5E5E5"}}  component="p">{ReactHtmlParser(this.props.data.subtext)}&lt;/Typography>
+                &lt;/CardContent>
+            &lt;/Card>
+            }
+            &lt;/React.Fragment>
+        )
+    }
+}
+
+export default ValueBox;</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Bubble.html">Bubble</a></li><li><a href="BubbleChart.html">BubbleChart</a></li><li><a href="BubbleMap.html">BubbleMap</a></li><li><a href="ChoroplethChart.html">ChoroplethChart</a></li><li><a href="CirclePackedBubble.html">CirclePackedBubble</a></li><li><a href="D3DensityChart.html">D3DensityChart</a></li><li><a href="Funnel.html">Funnel</a></li><li><a href="GroupBarChart.html">GroupBarChart</a></li><li><a href="HeatChart.html">HeatChart</a></li><li><a href="HorizontalStackBarChart.html">HorizontalStackBarChart</a></li><li><a href="IntervalLineChart.html">IntervalLineChart</a></li><li><a href="LineChart.html">LineChart</a></li><li><a href="NetworkChart.html">NetworkChart</a></li><li><a href="SequncesSunburst.html">SequncesSunburst</a></li><li><a href="StackBarChart.html">StackBarChart</a></li><li><a href="SunBurst.html">SunBurst</a></li><li><a href="TreeChart.html">TreeChart</a></li><li><a href="ValueBox.html">ValueBox</a></li><li><a href="ValueBoxChain.html">ValueBoxChain</a></li></ul><h3>Global</h3><ul><li><a href="global.html#addReferenceLine">addReferenceLine</a></li><li><a href="global.html#appear">appear</a></li><li><a href="global.html#BootstrapTooltip">BootstrapTooltip</a></li><li><a href="global.html#calculateLeftMargin">calculateLeftMargin</a></li><li><a href="global.html#createCustomTooltip">createCustomTooltip</a></li><li><a href="global.html#formatNumber">formatNumber</a></li><li><a href="global.html#formatString">formatString</a></li><li><a href="global.html#get_color">get_color</a></li><li><a href="global.html#hideAxes">hideAxes</a></li><li><a href="global.html#hideCustomTooltip">hideCustomTooltip</a></li><li><a href="global.html#init_chart">init_chart</a></li><li><a href="global.html#init_svg">init_svg</a></li><li><a href="global.html#init_xaxis">init_xaxis</a></li><li><a href="global.html#init_yaxis">init_yaxis</a></li><li><a href="global.html#MakeValueBoxes">MakeValueBoxes</a></li><li><a href="global.html#moveCustomTooltip">moveCustomTooltip</a></li><li><a href="global.html#onClickChangeChart">onClickChangeChart</a></li><li><a href="global.html#secondAxisLineChart">secondAxisLineChart</a></li><li><a href="global.html#secondAxisScatterChart">secondAxisScatterChart</a></li><li><a href="global.html#show_legend">show_legend</a></li><li><a href="global.html#show_second_axis">show_second_axis</a></li><li><a href="global.html#show_x">show_x</a></li><li><a href="global.html#show_y">show_y</a></li><li><a href="global.html#showCustomTooltip">showCustomTooltip</a></li><li><a href="global.html#tooltip_text_formatter">tooltip_text_formatter</a></li><li><a href="global.html#useStylesBootstrap">useStylesBootstrap</a></li><li><a href="global.html#xAxisTickFormat">xAxisTickFormat</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Fri Apr 30 2021 17:19:11 GMT+0530 (India Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

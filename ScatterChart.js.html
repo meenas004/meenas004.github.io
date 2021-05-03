@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: ScatterChart.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: ScatterChart.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import React, { Component } from "react";
+import * as d3 from "d3";
+import * as cu from "./ChartUtils"
+import { isNumber } from "underscore";
+
+var parent_data = {};
+
+/**
+ * Component to draw scatter chart
+ * @component
+ * @property {json} secondAxis second Axis
+ * @property {array} defined_colors array of the colors
+ * @property {fraction} opacity opacity
+ * @property {fraction} zLowerLimit z lower limit
+ * @property {fraciton} zUpperLimit z upper limit
+ */
+class BubbleChart extends Component {
+
+  componentDidMount() {
+    this.drawChart()
+  }
+
+  componentDidUpdate() {
+    this.drawChart()
+  }
+
+  drawChart() {
+    const margin = /*this.props.margin*/{ top: 30, right: 30, bottom: 70, left: 130 };
+    const anim_dur = this.props.animation*1.5;
+    const isParent = this.props.isParent;
+    
+    if (this.props.isParent) {
+      parent_data = this.props.data
+    }
+    var data = this.props.data;
+    const y_label = this.props.y_label;
+    const x_label = this.props.x_label;
+    const xAxisFormat = this.props.xaxisformat;
+    const yAxisFormat = this.props.yaxisformat;
+    const legendContainer = "#" + this.props.legendContainer;
+    const chartContainer = this.props.chartContainer?this.props.chartContainer:"#chart-container";
+    const selectedField = this.props.selectedField, selectedValue = this.props.selectedValue;
+    var width = this.props.width - margin.left - margin.right;
+    var height = this.props.height - margin.top - margin.bottom;
+    const clickToFilter = this.props.clickToFilter;
+    const ifClickChildren = this.props.ifClickChildren;
+    var definedColors = this.props.defined_colors;
+    const filterSource = this.props.filterSource;
+    const referenceLineValue = this.props.referenceLineValue, referenceLineColor = this.props.referenceLineColor;
+    const children = this.props.children;
+    var zLowerLimit = this.props.zLowerLimit?this.props.zLowerLimit: 5;
+    var zUpperLimit = this.props.zUpperLimit?this.props.zUpperLimit: 20; 
+    var pos = this.props.pos;
+    var circleOpacity;
+    var secondAxis =  this.props.secondAxis ;
+    var configName = this.props.configName;
+    var referenceLineLabel = this.props.referenceLineLabel;
+    var replaceVals = this.props.replaceVals;
+    
+    if (this.props.opacity != undefined) circleOpacity = this.props.opacity; else circleOpacity = 0.7;
+    
+
+    data = data.filter(function (e) {
+      return e[selectedField] == selectedValue;
+    });
+
+    var colors = data.map(function (obj) { return obj.color; });
+    colors = colors.filter(function (v, i) { return colors.indexOf(v) == i; });
+
+
+    var z = d3.scaleLinear()
+      .domain(d3.extent(data, d => d.value))
+      .range([zLowerLimit, zUpperLimit]);
+
+    var groups = data.map(d => { return d.color })
+
+    groups = [...new Set(groups)];
+
+    var color = cu.get_color(groups, false, this.props.defined_colors);
+    //1. Calculate margin based on y-axis labels
+    //2. Calculate width based on new left margin
+    // var x_group = d3.extent(data, d => d.x_axis);
+    var x_group = d3.map(data, function (d) { return (d.x_axis) }).keys();
+    
+    if(/(^-\d+\.\d+$|^-\d+$)|(^\d+\.\d+$|^\d+$)/.test(x_group[0])){ 
+      x_group = [d3.min(x_group, (d) => parseFloat(d)), d3.max(x_group, (d) => parseFloat(d))];
+    }
+    // var y_group = d3.extent(data, d => d.y_axis);
+    var y_group = d3.map(data, function (d) { return (d.y_axis) }).keys();
+    if(/(^-\d+\.\d+$|^-\d+$)|(^\d+\.\d+$|^\d+$)/.test(y_group[0])){ 
+      y_group = [d3.min(y_group, (d) => parseFloat(d)), d3.max(y_group, (d) => parseFloat(d))];
+    }
+
+     if(referenceLineValue!=undefined&amp;&amp;referenceLineValue>y_group[1])
+     { y_group[1]=referenceLineValue}
+
+    margin.left = cu.calculateLeftMargin(y_group);
+    var width = this.props.width - margin.left - margin.right;
+    var height = this.props.height - margin.top - margin.bottom;
+    cu.init_svg(chartContainer, legendContainer, margin, width, height);
+    cu.createCustomTooltip(chartContainer);
+    cu.show_legend(legendContainer, groups, color, false, false, circleOpacity);
+
+    var svg = d3.select(chartContainer).select('svg').select(".chart")
+
+    svg.select(".meta").selectAll("*").remove()
+    svg.select(".shapes").selectAll('text').remove()
+    svg.select(".shapes").selectAll('path').remove()
+
+    if (svg.select(".shapes").selectAll("circle").size() === 0) {
+      svg.selectAll("*").remove()
+      svg.append("g")
+        .attr('class', 'meta')
+      svg.append("g")
+        .attr('class', 'shapes')
+    }
+
+
+    var circles = svg.select(".shapes").selectAll("circle").data(data)
+
+    circles.exit().remove()
+
+    circles.enter().append("circle")
+
+    var re_height = this.props.height;
+    var re_width = this.props.width;
+    const valueLabel = this.props.valueLabel;
+    const valueFormat = this.props.valueFormat;
+
+    let unique_value_count = new Set(data.map(x => x.value)).size;
+    svg.select(".shapes").selectAll("circle")
+      .attr('transform', null)
+      .attr("class", function (d) { return "category _" + d.color.replace(/[^a-zA-Z0-9]/g, '') + " scatter_circle" })
+      .on("mouseover", function (d, i, j) {
+        cu.showCustomTooltip(this, function () {
+          let valText = (valueLabel) ? valueLabel : "Value";
+          let valFormat = (valueFormat) ? valueFormat : undefined;
+          let lodToShow = d.lod;
+          let colorToShow = d.color;
+          let xAxisToShow = d.x_axis;
+          let yAxisToShow = d.y_axis;
+          return cu.tooltip_text_formatter(replaceVals,xAxisToShow,yAxisToShow,x_label,y_label,lodToShow,colorToShow,yAxisFormat,xAxisFormat, d.value, valText, valFormat, unique_value_count)                              
+        });
+        cu.mouseover(d, i, j);
+      })
+      .on("mousemove", function () {
+        cu.moveCustomTooltip(this)
+      })
+      .on("mouseleave", function (d) {
+        cu.hideCustomTooltip();
+        d3.selectAll(".category").style("opacity", 1)
+        d3.select('.shapes').selectAll('circle').style("opacity", circleOpacity)
+
+      })
+      .on("click", function (d) {
+        if (clickToFilter) {
+          var selected_field = d[filterSource];
+          var newArr = data.filter(function (e) {
+            return e[filterSource] == selected_field;
+          });
+          var redraw = new BubbleChart();
+          redraw.props = {
+            configName: configName, defined_colors: definedColors, data: newArr, width: re_width, height: re_height,
+            x_label: x_label, y_label: y_label, legendContainer: legendContainer.slice(1), clickToFilter: clickToFilter,
+            children: children, filterSource: filterSource, referenceLineValue: referenceLineValue, referenceLineColor: referenceLineColor,referenceLineLabel: referenceLineLabel,
+            yaxisformat: yAxisFormat, xaxisformat: xAxisFormat, valueFormat: valueFormat, valueLabel: valueLabel, zLowerLimit: zLowerLimit, zUpperLimit: zUpperLimit
+          }
+          redraw.drawChart();
+        } else if (Object.keys(children).length != 0) {
+          var selected_field = d[filterSource];
+          var childChart = children;
+          if (ifClickChildren) {
+            cu.onClickChangeChart(null, re_height, re_width, null, null, null, false, pos, configName);
+          } else {
+            cu.onClickChangeChart(childChart, re_height, re_width, legendContainer.slice(1), children.filtertarget, selected_field, true, pos, configName);
+          }
+        }
+      })
+      .style("fill", function (d) { return color(d.color); })
+      .style("opacity", circleOpacity)
+      .attr("r", function(d){return z(d.value)})
+      
+        
+    var xAxisRes = cu.show_x(chartContainer, height, width, x_group, x_label, margin, anim_dur, d3.easeBack, xAxisFormat, true);
+    var yAxisRes = cu.show_y(chartContainer, height, y_group, y_label, margin, anim_dur, d3.easeBack, yAxisFormat);
+    var xAxis = xAxisRes[0], yAxis = yAxisRes[0], x = xAxisRes[1], y = yAxisRes[1],y2;
+
+
+    if (secondAxis!=undefined&amp;&amp;secondAxis!=null) {
+      var data2=secondAxis.data;
+      var y_group2 =  d3.extent(data2, d => d.y_axis);
+      var yAxisResSecond = cu.show_second_axis(chartContainer, height, width, y_group2, secondAxis.y_axis_label, margin, anim_dur, d3.easeBack)
+      y2 = yAxisResSecond[1];
+    }
+
+    var zoom = d3.zoom()
+      .scaleExtent([0.1, 20])
+      .extent([[0, 0], [width, height]])
+      .on("zoom", updateChart);
+
+    // Add brushing
+    var brush = d3.brush()                 // Add the brush feature using the d3.brush function
+      .extent([[0, 0], [re_width - margin.left, re_height - margin.bottom]]) // initialise the brush area: start at 0,0 and finishes at width,height: it means I select the whole graph area
+      .on("end", updateChart) // Each time the brush selection changes, trigger the 'updateChart' function
+    svg.select(".shapes").attr("clip-path", "url(#clip)");
+
+    let brush_div = svg.select(".meta").append("g")
+      .attr("class", "brush")
+      .on('dblclick', function (i, n) {        
+        if (!isParent) {
+          if (ifClickChildren) {
+            cu.onClickChangeChart(null, re_height, re_width, legendContainer.slice(1), null, null, false, pos, configName);
+          } else {
+            if (clickToFilter) {
+              var redraw = new BubbleChart();
+              redraw.props = {
+                configName: configName, defined_colors: definedColors, data: parent_data, width: re_width, height: re_height,
+                x_label: x_label, y_label: y_label, legendContainer: legendContainer.slice(1), clickToFilter: clickToFilter, children: children,
+                filterSource: filterSource, referenceLineValue: referenceLineValue, referenceLineColor: referenceLineColor, referenceLineLabel: referenceLineLabel,
+                yaxisformat: yAxisFormat, xaxisformat: xAxisFormat,valueFormat: valueFormat, valueLabel: valueLabel
+              }
+              redraw.drawChart();
+            }
+          }
+        }
+      })
+      
+      if(isNumber(data[0].x_axis)){
+        brush_div.call(brush);
+      }
+
+    // Add a clipPath: everything out of this area won't be drawn.
+    var clip = svg.select(".meta").append("defs").append("svg:clipPath")
+      .attr("id", "clip")
+      .append("svg:rect")
+      .attr("width", width)
+      .attr("height", height)
+      .attr("x", 0)
+      .attr("y", 0);
+
+    d3.forceSimulation()
+      .alphaDecay(0.5)
+      .nodes(data)
+      .on("tick", function (d) {
+        svg.select(".shapes").selectAll('.scatter_circle')
+          .transition().duration(anim_dur)//.ease(d3.easeBack)
+          .attr("cx", function (d) { return x(d.x_axis); })
+          .attr("cy", function (d) { return y(d.y_axis); })
+      });
+
+    if (secondAxis!=undefined&amp;&amp;secondAxis!=null) {
+      cu.secondAxisScatterChart(svg.select('.shapes'),secondAxis.data, x, y2, z, color, secondAxis.xaxisformat, secondAxis.yaxisformat)
+    }
+
+    if (referenceLineValue != undefined) {
+      cu.addReferenceLine(svg.select('.shapes'), x_group, referenceLineValue, referenceLineColor, x, y, margin, width);
+      d3.select(chartContainer).select('svg').select('.shapes').select('.regression')
+        .on("mouseover", function (d, i, j) {
+          cu.showCustomTooltip(this, function () {
+            return referenceLineLabel + ": " + referenceLineValue
+          });
+        })
+        .on("mousemove", function () {
+          cu.moveCustomTooltip(this)
+        })
+        .on("mouseleave", function (d) { cu.hideCustomTooltip(); })
+    }
+    else {
+      svg.select(".shapes").selectAll('.regression').remove();
+    }
+
+    var idleTimeout
+    function idled() {
+      idleTimeout = null;
+    }
+
+    function updateChart() {
+      const extent = d3.event.selection;
+        
+          if (!extent) {
+          var limitData = d3.extent(data, function (d) { return d.x_axis; });
+          if (limitData[0] &lt; 0) limitData[0] = 1.08 * limitData[0]
+          else limitData[0] = 0.08 * limitData[0]
+          limitData[1] = limitData[1]*1.08
+          if (!idleTimeout) return idleTimeout = setTimeout(idled, 350);
+          x.domain(limitData).nice();
+          var limitDataY = d3.extent(data, function (d) { return d.y_axis; })
+          if(referenceLineValue!=undefined&amp;&amp;referenceLineValue>limitDataY[1])
+          { limitDataY[1]=referenceLineValue}
+          if(limitDataY[0] &lt; 0) limitDataY[0] = limitDataY[0]*1.08
+          else limitDataY[0] = limitDataY[0]*0.08;
+          limitDataY[1] = 1.02*limitDataY[1];
+          y.domain(limitDataY).nice();
+        } else {
+          x.domain([extent[0][0], extent[1][0]].map(x.invert, x));
+          y.domain([extent[1][1], extent[0][1]].map(y.invert, y));
+          svg.select(".meta").select(".brush").call(brush.move, null) // This remove the grey brush area as soon as the selection has been done
+        }
+      xAxis.call(cu.xAxisTickFormat(x, isNumber(x.domain()[0]), xAxisFormat, x.domain()))
+      yAxis.call(isNumber(y.domain()[0]) ? d3.axisLeft(y).tickFormat(function (d) { return cu.formatNumber(d, yAxisFormat) }) : d3.axisLeft(y))
+      if (referenceLineValue != undefined) {
+      // cu.addReferenceLine(svg.select('.shapes'), x_group, referenceLineValue, referenceLineColor, x, y);
+      cu.addReferenceLine(svg.select('.shapes'), x_group, referenceLineValue, referenceLineColor, x, y, margin, width);
+      d3.select(chartContainer).select('svg').select('.shapes').select('.regression')
+        .on("mouseover", function (d, i, j) {
+          cu.showCustomTooltip(this, function () {
+            return referenceLineLabel + ": " + referenceLineValue
+          });
+        })
+        .on("mousemove", function () {
+          cu.moveCustomTooltip(this)
+        })
+        .on("mouseleave", function (d) { cu.hideCustomTooltip(); })
+      }
+      // update circle position
+      svg.select(".shapes")
+        .selectAll("circle")
+        .attr('cx', function (d) { return x(d.x_axis) })
+        .attr('cy', function (d) { return y(d.y_axis) });
+    }
+
+  }
+
+  render() {
+    return &lt;div>&lt;/div>
+  }
+
+}
+
+export default BubbleChart;</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Bubble.html">Bubble</a></li><li><a href="BubbleChart.html">BubbleChart</a></li><li><a href="BubbleMap.html">BubbleMap</a></li><li><a href="ChoroplethChart.html">ChoroplethChart</a></li><li><a href="CirclePackedBubble.html">CirclePackedBubble</a></li><li><a href="D3DensityChart.html">D3DensityChart</a></li><li><a href="Funnel.html">Funnel</a></li><li><a href="GroupBarChart.html">GroupBarChart</a></li><li><a href="HeatChart.html">HeatChart</a></li><li><a href="HorizontalStackBarChart.html">HorizontalStackBarChart</a></li><li><a href="IntervalLineChart.html">IntervalLineChart</a></li><li><a href="LineChart.html">LineChart</a></li><li><a href="NetworkChart.html">NetworkChart</a></li><li><a href="SequncesSunburst.html">SequncesSunburst</a></li><li><a href="StackBarChart.html">StackBarChart</a></li><li><a href="SunBurst.html">SunBurst</a></li><li><a href="TreeChart.html">TreeChart</a></li><li><a href="ValueBox.html">ValueBox</a></li><li><a href="ValueBoxChain.html">ValueBoxChain</a></li></ul><h3>Global</h3><ul><li><a href="global.html#addReferenceLine">addReferenceLine</a></li><li><a href="global.html#appear">appear</a></li><li><a href="global.html#BootstrapTooltip">BootstrapTooltip</a></li><li><a href="global.html#calculateLeftMargin">calculateLeftMargin</a></li><li><a href="global.html#createCustomTooltip">createCustomTooltip</a></li><li><a href="global.html#formatNumber">formatNumber</a></li><li><a href="global.html#formatString">formatString</a></li><li><a href="global.html#get_color">get_color</a></li><li><a href="global.html#hideAxes">hideAxes</a></li><li><a href="global.html#hideCustomTooltip">hideCustomTooltip</a></li><li><a href="global.html#init_chart">init_chart</a></li><li><a href="global.html#init_svg">init_svg</a></li><li><a href="global.html#init_xaxis">init_xaxis</a></li><li><a href="global.html#init_yaxis">init_yaxis</a></li><li><a href="global.html#MakeValueBoxes">MakeValueBoxes</a></li><li><a href="global.html#moveCustomTooltip">moveCustomTooltip</a></li><li><a href="global.html#onClickChangeChart">onClickChangeChart</a></li><li><a href="global.html#secondAxisLineChart">secondAxisLineChart</a></li><li><a href="global.html#secondAxisScatterChart">secondAxisScatterChart</a></li><li><a href="global.html#show_legend">show_legend</a></li><li><a href="global.html#show_second_axis">show_second_axis</a></li><li><a href="global.html#show_x">show_x</a></li><li><a href="global.html#show_y">show_y</a></li><li><a href="global.html#showCustomTooltip">showCustomTooltip</a></li><li><a href="global.html#tooltip_text_formatter">tooltip_text_formatter</a></li><li><a href="global.html#useStylesBootstrap">useStylesBootstrap</a></li><li><a href="global.html#xAxisTickFormat">xAxisTickFormat</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Fri Apr 30 2021 17:19:11 GMT+0530 (India Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

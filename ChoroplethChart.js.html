@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: ChoroplethChart.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: ChoroplethChart.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import React, { Component } from "react";
+import * as d3 from "d3";
+import * as cu from "./ChartUtils"
+import * as topojson from "topojson-client"
+import masterdata from './../data.json'
+import masterstates from './../states.json'
+import masterus from './../us.json'
+import { isNull } from "underscore";
+
+/**
+ * Chorpleth component
+ * @component
+ * @property {callback} d3ColorScheme d3 color callback 
+ * @property {string} valueFormat format of the value field
+ * @property {string} valueLabel value label
+ * @property {json} replaceVals replacements
+ * @property {} hideTooltipBottomValue={params.color}
+ * @property {string} configName unique name
+ * @property {string} xaxisformat x axis format
+ * @property {string} yaxisformat y axis format
+ * @property {number} animation animation duration
+ * @property {number} isParent whether parent or not
+ * @property {json} data chart data
+ * @property {array} legendRange range of the data, [minimum, maximum]
+ * @property {string} x_label x axis label
+ * @property {string} y_label y axis label
+ * @property {boolean} clickToFilter whether clickthrough interactivity or not
+ * @property {json} children toggle chart data
+ * @property {string} filterSource filter source field, value is fixed to "id" in case of choropleth
+ * @property {number} pos 
+ * @property {string} legendContainer id of the div that's going to contain legends
+ * @property {number} height height of the div/chart
+ * @property {number} width width of the div/chart
+ * @property {array} defined_colors array of the color to be used
+ */
+
+class ChoroplethChart extends Component {
+
+  componentDidMount() {
+    this.drawChart()
+  }
+  componentDidUpdate() {
+    this.drawChart()
+  }
+
+  drawChart() {
+    const margin = /*this.props.margin*/{ top: 30, right: 30, bottom: 70, left: 130 };
+    const data = Object.assign(new Map(this.props.data));
+    const us = masterus;
+    const states = new Map(us.objects.states.geometries.map(d => [d.id, d.properties]));  // Data for the Chart
+    const legendContainer = "#" + this.props.legendContainer;// Container ID for the Chart Legend
+    const chartContainer = this.props.chartContainer?this.props.chartContainer:"#" + "chart-container";
+    const clickToFilter = this.props.clickToFilter;
+    var configName = this.props.configName;
+    var hideTooltipBottomValue = this.props.hideTooltipBottomValue;
+    const ifClickChildren = this.props.ifClickChildren;
+    const children = this.props.children;
+    var width = this.props.width - margin.left - margin.right;// Calculated width for the SVG
+    var height = this.props.height - margin.top - margin.bottom;// Calculated height for the SVG
+    const legend_range = this.props.legendRange;
+    var filterSource = this.props.filterSource;
+    var pos = this.props.pos;
+    const referenceLineValue = this.props.referenceLineValue, referenceLineColor = this.props.referenceLineColor;
+    var color = cu.get_color(legend_range, true, this.props.defined_colors, this.props.d3ColorScheme), path = d3.geoPath(), format = d => `${d}`;
+    const transform = d3.zoomIdentity;
+    var replaceVals = this.props.replaceVals;
+    var valueLabel = this.props.valueLabel;
+    const valueFormat = this.props.valueFormat;
+    cu.init_svg(chartContainer, legendContainer, margin, width, height);
+
+    var svg = d3.select(chartContainer).select('svg').select(".chart");
+    
+    cu.hideAxes(chartContainer);
+    cu.createCustomTooltip(chartContainer);
+   
+    d3.select(chartContainer).select('svg').select('.trans').attr("transform", "translate(0,0)");
+    /** remove unwanted shapes */
+    svg.select('.shapes').selectAll('circle').remove();
+    svg.select(".meta").selectAll("*").remove()
+
+    if (pos > 0) {
+      cu.show_legend(legendContainer, legend_range, color, true, true)
+    }
+    var re_width = this.props.width
+    var re_height = this.props.height;
+    let valText = (valueLabel) ? valueLabel : "Value";
+    let valFormat = (valueFormat) ? valueFormat : undefined;
+   
+
+    d3.select(chartContainer).on('dblclick.zoom', null)
+    d3.select(chartContainer).select('svg').on('dblclick.zoom', null)
+
+    d3.select(chartContainer).select('svg').attr("viewBox", [0, 0, 975, 610]).call(d3.zoom().scaleExtent([1 / 2, 8]).on('zoom', zoomed)).on('dblclick.zoom', null);
+    if (svg.select(".shapes").selectAll("path").size() === 0) {
+      svg.selectAll("*").remove()
+      svg.append("g")
+        .attr('class', 'meta')
+      svg.append("g")
+        .attr('class', 'shapes')
+    }
+    svg.select('.meta').append('rect').attr('width', width).attr('height', height).style('opacity', 0)
+    .on('dblclick', function (i, n) {
+      if (ifClickChildren) {
+        cu.onClickChangeChart(null, re_height, re_width, legendContainer.slice(1), null, null, false, pos, configName);
+      } else {
+        if (clickToFilter) {
+        }
+      }
+    })
+    .on('dblclick.zoom', null)
+
+    var paths = svg.select(".shapes")
+      .selectAll('path')
+      .data(us)
+
+    paths.exit().remove();
+
+    paths.enter().append("path")
+    svg.select('.shapes')
+      .selectAll("path")
+      .data(topojson.feature(us, us.objects.counties).features)
+      .join("path")
+      .attr("fill", d => { return color(data.get(d.id)) })
+      .attr("d", path)
+      .on("click", function (d) {
+        if (!data.get(d.id)) return null
+        if (clickToFilter) {
+        }
+        else if (Object.keys(children).length != 0) {
+          var childChart = children;
+          if(filterSource==undefined){
+            filterSource="id"
+          }
+          var selected_field = d[filterSource];
+          if (!(replaceVals &amp;&amp; replaceVals.hasOwnProperty(data.get(d.id)))) {
+
+          if (ifClickChildren) {
+            cu.onClickChangeChart(null, re_height, re_width, null, null, null, false, pos, configName);
+
+          } else {
+            cu.onClickChangeChart(childChart, re_height, re_width, legendContainer.slice(1), children.filtertarget, selected_field, true, pos, configName);
+
+          }
+        }
+
+        }
+      })
+      .on("mouseover", function (d, i, j) {
+        cu.showCustomTooltip(this, function () {
+          let toShow = data.get(d.id);
+          if (toShow &amp;&amp; replaceVals &amp;&amp; replaceVals.hasOwnProperty(toShow)) {
+            toShow = replaceVals[toShow]
+          } else if(!toShow){
+            toShow = 'No data available'
+          }
+          return `${d.properties.name},  ${states.get(d.id.slice(0, 2)).name}  ${format(hideTooltipBottomValue.localeCompare("no") == 0 ? "" : "\n" + valText+":"+ cu.formatNumber(toShow, valueFormat))}`;
+        });
+      })
+      .on("mousemove", function () {
+        cu.moveCustomTooltip(this)
+      })
+      .on("mouseleave", function (d) { cu.hideCustomTooltip(); })
+
+    svg.select('.shapes').append("path")
+      .datum(topojson.mesh(us, us.objects.states, (a, b) => a !== b))
+      .attr("fill", "none")
+      .attr("stroke", "white")
+      .attr("stroke-linejoin", "round")
+      .attr("d", path);
+
+    function zoomed() {
+      d3.select(chartContainer).select('svg').selectAll('.trans').on('dblclick', null).attr('transform', d3.event.transform)
+    }
+
+    if (referenceLineValue != undefined) { cu.addReferenceLine(svg.select('.shapes'), null, referenceLineValue, referenceLineColor, null, isNull); }
+    else { svg.select(".shapes").selectAll('.regression').remove(); }
+  }
+
+  render() {
+    return &lt;div>&lt;/div>
+  }
+
+}
+export default ChoroplethChart;</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Bubble.html">Bubble</a></li><li><a href="BubbleChart.html">BubbleChart</a></li><li><a href="BubbleMap.html">BubbleMap</a></li><li><a href="ChoroplethChart.html">ChoroplethChart</a></li><li><a href="CirclePackedBubble.html">CirclePackedBubble</a></li><li><a href="D3DensityChart.html">D3DensityChart</a></li><li><a href="Funnel.html">Funnel</a></li><li><a href="GroupBarChart.html">GroupBarChart</a></li><li><a href="HeatChart.html">HeatChart</a></li><li><a href="HorizontalStackBarChart.html">HorizontalStackBarChart</a></li><li><a href="IntervalLineChart.html">IntervalLineChart</a></li><li><a href="LineChart.html">LineChart</a></li><li><a href="NetworkChart.html">NetworkChart</a></li><li><a href="SequncesSunburst.html">SequncesSunburst</a></li><li><a href="StackBarChart.html">StackBarChart</a></li><li><a href="SunBurst.html">SunBurst</a></li><li><a href="TreeChart.html">TreeChart</a></li><li><a href="ValueBox.html">ValueBox</a></li><li><a href="ValueBoxChain.html">ValueBoxChain</a></li></ul><h3>Global</h3><ul><li><a href="global.html#addReferenceLine">addReferenceLine</a></li><li><a href="global.html#appear">appear</a></li><li><a href="global.html#BootstrapTooltip">BootstrapTooltip</a></li><li><a href="global.html#calculateLeftMargin">calculateLeftMargin</a></li><li><a href="global.html#createCustomTooltip">createCustomTooltip</a></li><li><a href="global.html#formatNumber">formatNumber</a></li><li><a href="global.html#formatString">formatString</a></li><li><a href="global.html#get_color">get_color</a></li><li><a href="global.html#hideAxes">hideAxes</a></li><li><a href="global.html#hideCustomTooltip">hideCustomTooltip</a></li><li><a href="global.html#init_chart">init_chart</a></li><li><a href="global.html#init_svg">init_svg</a></li><li><a href="global.html#init_xaxis">init_xaxis</a></li><li><a href="global.html#init_yaxis">init_yaxis</a></li><li><a href="global.html#MakeValueBoxes">MakeValueBoxes</a></li><li><a href="global.html#moveCustomTooltip">moveCustomTooltip</a></li><li><a href="global.html#onClickChangeChart">onClickChangeChart</a></li><li><a href="global.html#secondAxisLineChart">secondAxisLineChart</a></li><li><a href="global.html#secondAxisScatterChart">secondAxisScatterChart</a></li><li><a href="global.html#show_legend">show_legend</a></li><li><a href="global.html#show_second_axis">show_second_axis</a></li><li><a href="global.html#show_x">show_x</a></li><li><a href="global.html#show_y">show_y</a></li><li><a href="global.html#showCustomTooltip">showCustomTooltip</a></li><li><a href="global.html#tooltip_text_formatter">tooltip_text_formatter</a></li><li><a href="global.html#useStylesBootstrap">useStylesBootstrap</a></li><li><a href="global.html#xAxisTickFormat">xAxisTickFormat</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Fri Apr 30 2021 17:19:11 GMT+0530 (India Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

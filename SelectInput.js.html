@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: SelectInput.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: SelectInput.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import React from "react";
+import InputLabel from "@material-ui/core/InputLabel";
+import Autocomplete from "@material-ui/lab/Autocomplete";
+import TextField from "@material-ui/core/TextField";
+const _ = require("underscore");
+
+/**
+ * Implementation of dropdown through AutoComplete component of Material UI
+ * @component
+ * @property {json} selectedOption option selected by the object in {value: "", label: ""} format
+ * @property {json} focusedOption option highlighted by the user
+ * @property {json} this.options options to be shown by the dropdown; values supplied from FormApp.js through this.props.options
+ */
+class SelectInput extends React.Component {
+  constructor(props) {
+    super(props);
+    this.id = _.uniqueId("selectInput");
+    this.options = this.props.options;
+    this.state = {
+      selectedOption: this.props.selectedOption,
+      focusedOption: null,
+    };
+  }
+/**
+ * Dropdown change handler
+ * @property {json} e 
+ * @property {json} value option selected by the users
+ * @property {string} reason reason for evoking the change handler; clear is supplied if user clears the selected value
+ */
+  handleInputChange = (e, value, reason) => {
+    if (!this.props.multiple) {
+      this.setState({
+        selectedOption: value,
+      });
+      
+      var val = value;
+      if (!val &amp;&amp; reason !== 'clear') return null;
+      if(reason === 'clear') {val = null}
+      this.props.handleChange(
+        val,
+        this.props.pos,
+        this.props.parent_pos,
+        this.props.el_pos,
+        this.props.id
+      );
+    } else {
+      if(!Array.isArray(value)) value = [value];
+      this.setState({
+        selectedOption: value,
+      });
+      let val = value;
+      if (!val &amp;&amp; reason !== 'clear') return null;
+      if(reason === 'clear') {val = null}
+      this.props.handleChange(
+        value,
+        this.props.pos,
+        this.props.parent_pos,
+        this.props.el_pos,
+        this.props.id
+      );
+    }
+  };
+
+  /**
+   * Remove the options whenever it makes sense
+   * @property {json} next props that will be received
+   */
+  componentWillReceiveProps(next) {
+    if (next.selectedOption === this.props.selectedOption) return null;
+    this.setState({
+      selectedOption: next.selectedOption === null ? null : next.selectedOption,
+    });
+  }
+
+  render() {
+    return (
+      &lt;Autocomplete
+        debug
+        autoSelect={true}
+        handleHomeEndKeys={true}
+        disableCloseOnSelect={this.props.multiple}
+        filterSelectedOptions = {this.props.filterSelectedOptions}
+        disabled={this.props.disabled}
+        multiple={this.props.multiple}
+        style={{ width: "200px", height: "10px" }}
+        options={this.props.options}
+        onChange={this.handleInputChange}
+        onHighlightChange={(e, option, reason) => {
+          this.setState({
+            focusedOption: option,
+          });
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            this.handleInputChange(e, this.state.focusedOption);
+          }
+        }}
+        getOptionLabel={(option) => {
+          if (option === null) return null;
+          return option["label"];
+        }}
+        getOptionSelected={(option, value) => {
+          if (option === null) return null;
+          return option["value"] === value;
+        }}
+        defaultValue={this.props.selectedOption}
+        renderInput={(params) => (
+          &lt;TextField {...params} label={this.props.label} margin="normal" />
+        )}
+      />
+    );
+  }
+}
+
+export default SelectInput;
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="FormApp.html">FormApp</a></li><li><a href="module.exports.html">exports</a></li><li><a href="MultiPageFormApp.html">MultiPageFormApp</a></li><li><a href="RadioButtonsGroup.html">RadioButtonsGroup</a></li><li><a href="SelectInput.html">SelectInput</a></li><li><a href="TextInput.html">TextInput</a></li></ul><h3>Global</h3><ul><li><a href="global.html#compareStrings">compareStrings</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Fri Apr 30 2021 17:14:19 GMT+0530 (India Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

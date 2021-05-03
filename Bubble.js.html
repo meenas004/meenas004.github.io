@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: Bubble.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: Bubble.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import React, { Component } from "react";
+import * as d3 from "d3";
+import * as cu from "./ChartUtils"
+import { isNumber } from "underscore";
+
+var parent_data = {};
+/**
+ * Component to make bubble chart
+ * @component
+ * @property {string} valueFormat Format of the value
+ * @property {string} valueLabel Label of the value  
+ * @property {json} children toggle charts data
+ * @property {string} filterSource filtersource 
+ * @property {json} replaceVals replacements
+ * @property {boolean} clickToFilter whether clickthrough or not
+ * @property {fraction} attraction attraction fraction 
+ * @property {fraction} collide collide fraction
+ * @property {fraction} alphaDecay alphaDecay fraction
+ * @property {fraction} zLowerLimit 
+ * @property {fraction} zUpperLimit 
+ * @property {fraction} outterCircleRadius
+ * @property {string} configName Unique value of the app
+ * @property {string} xaxisformat x axis format
+ * @property {string} yaxisformat y axis format
+ * @property {number} animation animation duration
+ * @property {boolean} isParent whether parent or not
+ * @property {json} data chart data
+ * @property {boolean} is_bubble whether boolean or not
+ * @property {number} pos current visible position
+ * @property {string} legendContainer id of the legend container
+ * @property {number} height chart/svg height
+ * @property {number} width chart/svg width
+ * @property {array} defined_colors array of colors to be used in the app
+ * @property {fraction} opacity opacity 
+ */
+class Bubble extends Component {
+
+  componentDidMount() {
+    this.drawChart()
+  }
+
+  componentDidUpdate() {
+    this.drawChart()
+  }
+
+  drawChart() {
+    const globalColorScheme = /*this.props.color*/ d3.schemeSet2;
+    const margin = /*this.props.margin*/{ top: 30, right: 30, bottom: 70, left: 130 };
+    const anim_dur = this.props.animation/5;
+    const isParent = this.props.isParent;
+    if (this.props.isParent) {
+      parent_data = this.props.data
+    }
+    var definedColors = this.props.defined_colors;
+    var data = this.props.data // Data for the Chart
+    const legendContainer = "#" + this.props.legendContainer;// Container ID for the Chart Legend
+    const chartContainer = this.props.chartContainer?this.props.chartContainer:"#" + "chart-container";
+    var width = this.props.width - margin.left - margin.right;// Calculated width for the SVG
+    var height = this.props.height - margin.top - margin.bottom;// Calculated height for the SVG
+    const ifClickChildren = this.props.ifClickChildren;
+    const children = this.props.children;
+    var pos = this.props.pos;
+    const clickToFilter = this.props.clickToFilter;
+    const filterSource = this.props.filterSource;
+    var zLowerLimit, zUpperLimit, outterCircleRadius;
+    var configName = this.props.configName;
+    var circleOpacity;
+    var valueLabel = this.props.valueLabel;
+    const valueFormat = this.props.valueFormat;
+    var replaceVals = this.props.replaceVals;
+    zLowerLimit = 10; zUpperLimit = 20; outterCircleRadius = 28
+    if (this.props.opacity != undefined) circleOpacity = this.props.opacity; else circleOpacity = 0.7;
+    if (this.props.zLowerLimit) zLowerLimit = this.props.zLowerLimit
+    if (this.props.zUpperLimit) zUpperLimit = this.props.zUpperLimit
+    if (this.props.outterCircleRadius) outterCircleRadius = this.props.outterCircleRadius
+    var attraction = this.props.attraction ? this.props.attraction : 40;
+    var alphaDecay = this.props.alphaDecay ? this.props.alphaDecay : 0.5;
+    var collide = this.props.collide ? this.props.collide : 0.3;
+    const selectedField = this.props.selectedField, selectedValue = this.props.selectedValue;
+
+    data = data.filter(function (e) {
+      return e[selectedField] == selectedValue;
+    });
+
+    //Assign Radius to circle
+    var z = d3.scaleLinear()
+      .domain(d3.extent(data, d => d.value))
+      .range([zLowerLimit, zUpperLimit]);
+    //Mapping of groups
+    var groups = data.map(d => { return d.color })
+
+    groups = [...new Set(groups)];
+    let unique_value_count = new Set(data.map(x => x.value)).size;
+
+    //Assigning color scheme
+    var color = cu.get_color(groups, false, this.props.defined_colors);
+    //Initializes SVG element
+    cu.init_svg(chartContainer, legendContainer, margin, width, height);
+    d3.select(chartContainer).select('svg').select('.trans').attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+    // Add legend for the Chart
+    cu.show_legend(legendContainer, groups, color, false, false, circleOpacity);
+    cu.createCustomTooltip(chartContainer);
+
+    var svg = d3.select(chartContainer).select('svg').select(".chart")
+
+    svg.select(".meta").selectAll("*").remove()//Clears the SVG Meta element
+
+    svg.select(".shapes").selectAll('text').remove()
+    svg.select(".shapes").selectAll('path').remove()
+
+
+    if (svg.select(".shapes").selectAll("circle").size() === 0) {
+      svg.selectAll("*").remove()
+      svg.append("g")
+        .attr('class', 'meta')
+      svg.append("g")
+        .attr('class', 'shapes')
+    }
+
+    var re_height = this.props.height;
+    var re_width = this.props.width;
+
+    //Add double Click functionality to the meta element
+    svg.select('.meta').append('rect').attr('width', width).attr('height', height).style('opacity', 0)
+      .on('dblclick', function (i, n) {
+        if (!isParent){
+          if(ifClickChildren){
+            cu.onClickChangeChart(null, re_height, re_width, legendContainer.slice(1), null, null, false, pos, configName)
+          } else {
+            var redraw = new Bubble();
+            redraw.props = {
+              configName: configName, defined_colors: definedColors, data: parent_data, width: re_width, height: re_height,
+              legendContainer: legendContainer.slice(1), clickToFilter: clickToFilter, children: children, filterSource: filterSource,
+              valueFormat: valueFormat, valueLabel: valueLabel, zLowerLimit: zLowerLimit, zUpperLimit: zUpperLimit, circleOpacity: circleOpacity,
+              outterCircleRadius: outterCircleRadius, attraction: attraction, alphaDecay: alphaDecay, collide: collide
+            }
+            redraw.drawChart();
+          }
+        }
+      })
+
+    var circles = svg.select(".shapes").selectAll("circle").data(data)
+
+    circles.exit().remove()//Clears the circle element
+
+    circles.enter().append("circle")
+
+    var colors = data.map(function (obj) { return obj.color; });
+    colors = colors.filter(function (v, i) { return colors.indexOf(v) == i; });
+
+    svg.select(".shapes").selectAll("circle")
+      .attr('transform', null)
+      .attr("class", function (d) { return "category _" + d.color.replace(/[^a-zA-Z0-9]/g, '') + " bubble_circle" })
+      .on("mouseover", function (d, i, j) {
+        cu.showCustomTooltip(this, function () {
+          let lodToShow = d.lod;
+          let colorToShow = d.color;
+          let valText = (valueLabel) ? valueLabel : "Value";
+          return cu.tooltip_text_formatter(replaceVals,undefined, undefined, undefined, undefined, lodToShow,colorToShow, undefined, undefined,d.value,valText,valueFormat,unique_value_count)                                        
+        });
+
+        cu.mouseover(d, i, j);
+      })
+      .on("mousemove", function () {
+        cu.moveCustomTooltip(this)
+      })
+      .on("mouseleave", function (d) {
+        cu.hideCustomTooltip();
+        d3.selectAll(".category").style("opacity", 1)
+        d3.select('.shapes').selectAll('circle').style("opacity", circleOpacity)
+      })
+      .attr("r", function(d){return z(d.value)})
+      .style("fill", function (d) { return color(d.color); })
+      .style("opacity", 1)
+      .style('cursor', 'pointer')
+      .on("click", function (e) {
+        if (clickToFilter) {
+          var selected_field = e[filterSource];
+          var newArr = data.filter(function (e) {
+            return e[filterSource] == selected_field;
+          });
+          var redraw = new Bubble();
+          redraw.props = {
+            configName: configName, defined_colors: definedColors, data: newArr, width: re_width, height: re_height,
+            legendContainer: legendContainer.slice(1), clickToFilter: clickToFilter, children: children, filterSource: filterSource,
+            valueFormat: valueFormat, valueLabel: valueLabel, zLowerLimit: zLowerLimit, zUpperLimit: zUpperLimit, opacity: circleOpacity,
+            outterCircleRadius: outterCircleRadius, attraction: attraction, alphaDecay: alphaDecay, collide: collide
+          }
+          redraw.drawChart();
+        } else if (Object.keys(children).length != 0) {
+          var selected_field = e[filterSource];
+          var childChart = children;
+          if (ifClickChildren) {
+            cu.onClickChangeChart(null, re_height, re_width, null, null, null, false, pos, configName);
+
+          } else {
+            cu.onClickChangeChart(childChart, re_height, re_width, legendContainer.slice(1), children.filtertarget, selected_field, true, pos, configName);
+
+          }
+        }
+      })
+      .style("opacity", circleOpacity)
+      
+
+    svg.select(".shapes").selectAll('.regression').remove();
+    
+    cu.hideAxes(chartContainer);
+
+    d3.select(chartContainer).select('svg').select(".trans").selectAll(".x_axis, .y_axis").remove();
+    
+    var simulation = d3.forceSimulation()
+      .force("center", d3.forceCenter(width / 2, height / 2)) // Attraction to the center of the svg area
+      .force("charge", d3.forceManyBody().strength(attraction)) // Nodes are attracted one each other of value is > 0
+      .force("collide", d3.forceCollide().strength(collide).radius(outterCircleRadius).iterations(1)) // Force that avoids circle overlapping
+      .alphaDecay(alphaDecay)
+
+    simulation
+      .nodes(data)
+      .on("tick", function (d) {
+        svg.select(".shapes").selectAll('.bubble_circle')
+          .transition().duration(anim_dur).ease(d3.easeLinear)
+          .attr("cx", function (d) { return d.x; })
+          .attr("cy", function (d) { return d.y; })
+      });
+
+  }
+
+  render() {
+    return &lt;div>&lt;/div>
+  }
+}
+
+export default Bubble;</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Bubble.html">Bubble</a></li><li><a href="BubbleChart.html">BubbleChart</a></li><li><a href="BubbleMap.html">BubbleMap</a></li><li><a href="ChoroplethChart.html">ChoroplethChart</a></li><li><a href="CirclePackedBubble.html">CirclePackedBubble</a></li><li><a href="D3DensityChart.html">D3DensityChart</a></li><li><a href="Funnel.html">Funnel</a></li><li><a href="GroupBarChart.html">GroupBarChart</a></li><li><a href="HeatChart.html">HeatChart</a></li><li><a href="HorizontalStackBarChart.html">HorizontalStackBarChart</a></li><li><a href="IntervalLineChart.html">IntervalLineChart</a></li><li><a href="LineChart.html">LineChart</a></li><li><a href="NetworkChart.html">NetworkChart</a></li><li><a href="SequncesSunburst.html">SequncesSunburst</a></li><li><a href="StackBarChart.html">StackBarChart</a></li><li><a href="SunBurst.html">SunBurst</a></li><li><a href="TreeChart.html">TreeChart</a></li><li><a href="ValueBox.html">ValueBox</a></li><li><a href="ValueBoxChain.html">ValueBoxChain</a></li></ul><h3>Global</h3><ul><li><a href="global.html#addReferenceLine">addReferenceLine</a></li><li><a href="global.html#appear">appear</a></li><li><a href="global.html#BootstrapTooltip">BootstrapTooltip</a></li><li><a href="global.html#calculateLeftMargin">calculateLeftMargin</a></li><li><a href="global.html#createCustomTooltip">createCustomTooltip</a></li><li><a href="global.html#formatNumber">formatNumber</a></li><li><a href="global.html#formatString">formatString</a></li><li><a href="global.html#get_color">get_color</a></li><li><a href="global.html#hideAxes">hideAxes</a></li><li><a href="global.html#hideCustomTooltip">hideCustomTooltip</a></li><li><a href="global.html#init_chart">init_chart</a></li><li><a href="global.html#init_svg">init_svg</a></li><li><a href="global.html#init_xaxis">init_xaxis</a></li><li><a href="global.html#init_yaxis">init_yaxis</a></li><li><a href="global.html#MakeValueBoxes">MakeValueBoxes</a></li><li><a href="global.html#moveCustomTooltip">moveCustomTooltip</a></li><li><a href="global.html#onClickChangeChart">onClickChangeChart</a></li><li><a href="global.html#secondAxisLineChart">secondAxisLineChart</a></li><li><a href="global.html#secondAxisScatterChart">secondAxisScatterChart</a></li><li><a href="global.html#show_legend">show_legend</a></li><li><a href="global.html#show_second_axis">show_second_axis</a></li><li><a href="global.html#show_x">show_x</a></li><li><a href="global.html#show_y">show_y</a></li><li><a href="global.html#showCustomTooltip">showCustomTooltip</a></li><li><a href="global.html#tooltip_text_formatter">tooltip_text_formatter</a></li><li><a href="global.html#useStylesBootstrap">useStylesBootstrap</a></li><li><a href="global.html#xAxisTickFormat">xAxisTickFormat</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Fri Apr 30 2021 17:19:11 GMT+0530 (India Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

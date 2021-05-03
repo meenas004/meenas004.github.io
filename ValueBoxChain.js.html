@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: ValueBoxChain.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: ValueBoxChain.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import React from "react";
+import ValueBox from "./ValueBox";
+import AliceCarousel from 'react-alice-carousel';
+import ReactTooltip from 'react-tooltip';
+import {Grid} from '@material-ui/core';
+// import "react-alice-carousel/lib/alice-carousel.css";
+import * as cu from "./ChartUtils";
+import { isNumber } from "underscore";
+import Typography from "material-ui/styles/typography";
+
+/**
+ * Creates KPI Card
+ * @param {json} props json props 
+ */
+const MakeValueBoxes = (props) =>{
+  return(
+  &lt;React.Fragment>
+  {
+    props.data.map(val=>{
+    return &lt;ValueBox data={val} color = {props.color}/>
+    })
+  }
+  &lt;/React.Fragment>
+  )
+  
+}
+
+/**
+ * KPI cards component
+ * @component
+ * @property {string} layout - if value is compact, then it displays 4 cards on same page otherwise, 2 cards per page are dispalyed
+ */
+class ValueBoxChain extends React.Component {
+    constructor(props){
+        super(props);
+    }
+
+    /**
+     * Window resize event attachement
+     */
+    componentDidMount(){
+      setTimeout(() => { window.dispatchEvent(new Event('resize')) }, 500);
+    }
+    
+    render(){
+        const responsive = {
+            0: {
+              items: 1
+            },
+            600: {
+              items: (this.props.props.chain_layout === 'compact')?1:2
+            },
+            1024: {
+              items: (this.props.props.chain_layout === 'compact')?1:2
+            }
+          };
+
+          var elements = []
+          
+          if(this.props.props.chain_layout === 'compact'){
+            for(var i=0; i&lt;this.props.props.data.length; i=i+4){
+              
+            elements.push(
+            &lt;div className="item" data-value={i} style={{paddingRight:"2.5%"}}>
+              &lt;Grid xs={12} container direction='row' style={{marginBottom: '20px'}}>
+                &lt;Grid  xs = {6}>{this.props.props.data[i] &amp;&amp; &lt;ValueBox data = {this.props.props.data[i]} color = {this.props.props.card_color} />}&lt;/Grid>
+                &lt;Grid  xs = {6}> {this.props.props.data[i+1] &amp;&amp; &lt;ValueBox data = {this.props.props.data[i+1]} color = {this.props.props.card_color} />} &lt;/Grid>
+              &lt;/Grid>
+              &lt;Grid xs={12} container direction='row'>
+                &lt;Grid xs={6}>{this.props.props.data[i+2] &amp;&amp; &lt;ValueBox data = {this.props.props.data[i+2]} color = {this.props.props.card_color} />}&lt;/Grid>
+                &lt;Grid xs ={6}>{this.props.props.data[i+3] &amp;&amp; &lt;ValueBox data = {this.props.props.data[i+3]} color = {this.props.props.card_color} />} &lt;/Grid>
+              &lt;/Grid>
+            &lt;/div>
+            )
+          }
+        } else {
+          for(var i = 0; i&lt;this.props.props.data.length; i++){
+            elements.push(
+              &lt;ValueBox key = {i} data ={this.props.props.data[i]} color = {this.props.props.card_color} />
+            )
+          }
+        }
+
+        
+
+        return(
+            &lt;div id ='container_valueBox' style={{height: "fit-content"}}>
+            &lt;AliceCarousel
+                    mouseTracking ={true}
+                    startIndex = {0}
+                    width = {this.props.width}
+                    fadeOutAnimation={true}
+                    mouseDragEnabled={true}
+                    dotsDisabled= {true}
+                    autoWidth = {false}
+                    responsive={responsive}
+                    infinite = {false}
+                    onSlideChange={this.onSlideChange}
+                    onSlideChanged={this.onSlideChanged}
+                    buttonsDisabled={this.props.props.data.length &lt;= 2}
+                    items={elements}
+                    >
+                &lt;/AliceCarousel>
+                &lt;ReactTooltip place="top" type="info" effect="solid"/>
+            &lt;/div>
+            
+        )        
+    }
+}
+
+export default ValueBoxChain;</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Bubble.html">Bubble</a></li><li><a href="BubbleChart.html">BubbleChart</a></li><li><a href="BubbleMap.html">BubbleMap</a></li><li><a href="ChoroplethChart.html">ChoroplethChart</a></li><li><a href="CirclePackedBubble.html">CirclePackedBubble</a></li><li><a href="D3DensityChart.html">D3DensityChart</a></li><li><a href="Funnel.html">Funnel</a></li><li><a href="GroupBarChart.html">GroupBarChart</a></li><li><a href="HeatChart.html">HeatChart</a></li><li><a href="HorizontalStackBarChart.html">HorizontalStackBarChart</a></li><li><a href="IntervalLineChart.html">IntervalLineChart</a></li><li><a href="LineChart.html">LineChart</a></li><li><a href="NetworkChart.html">NetworkChart</a></li><li><a href="SequncesSunburst.html">SequncesSunburst</a></li><li><a href="StackBarChart.html">StackBarChart</a></li><li><a href="SunBurst.html">SunBurst</a></li><li><a href="TreeChart.html">TreeChart</a></li><li><a href="ValueBox.html">ValueBox</a></li><li><a href="ValueBoxChain.html">ValueBoxChain</a></li></ul><h3>Global</h3><ul><li><a href="global.html#addReferenceLine">addReferenceLine</a></li><li><a href="global.html#appear">appear</a></li><li><a href="global.html#BootstrapTooltip">BootstrapTooltip</a></li><li><a href="global.html#calculateLeftMargin">calculateLeftMargin</a></li><li><a href="global.html#createCustomTooltip">createCustomTooltip</a></li><li><a href="global.html#formatNumber">formatNumber</a></li><li><a href="global.html#formatString">formatString</a></li><li><a href="global.html#get_color">get_color</a></li><li><a href="global.html#hideAxes">hideAxes</a></li><li><a href="global.html#hideCustomTooltip">hideCustomTooltip</a></li><li><a href="global.html#init_chart">init_chart</a></li><li><a href="global.html#init_svg">init_svg</a></li><li><a href="global.html#init_xaxis">init_xaxis</a></li><li><a href="global.html#init_yaxis">init_yaxis</a></li><li><a href="global.html#MakeValueBoxes">MakeValueBoxes</a></li><li><a href="global.html#moveCustomTooltip">moveCustomTooltip</a></li><li><a href="global.html#onClickChangeChart">onClickChangeChart</a></li><li><a href="global.html#secondAxisLineChart">secondAxisLineChart</a></li><li><a href="global.html#secondAxisScatterChart">secondAxisScatterChart</a></li><li><a href="global.html#show_legend">show_legend</a></li><li><a href="global.html#show_second_axis">show_second_axis</a></li><li><a href="global.html#show_x">show_x</a></li><li><a href="global.html#show_y">show_y</a></li><li><a href="global.html#showCustomTooltip">showCustomTooltip</a></li><li><a href="global.html#tooltip_text_formatter">tooltip_text_formatter</a></li><li><a href="global.html#useStylesBootstrap">useStylesBootstrap</a></li><li><a href="global.html#xAxisTickFormat">xAxisTickFormat</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Fri Apr 30 2021 17:19:11 GMT+0530 (India Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

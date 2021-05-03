@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: CirclePackedBubble.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: CirclePackedBubble.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import React, { Component } from "react";
+import * as d3 from "d3";
+import * as cu from "./ChartUtils"
+import { isNumber } from "underscore";
+
+/**
+ * Component to draw circle packed bubble chart
+ * @component
+ * @property {string} configName unique name of the app
+ * @property {number} animation animation duration
+ * @property {boolean} isParent whether chart is parent chart or not
+ * @property {json} data chart data
+ * @property {number} pos current visible position on the screen
+ * @property {string} legendContainer div id of the legend container
+ * @property {number} height height of the chart
+ * @property {number} width width of the chart
+ * @property {array} defined_colors colors to be used
+ * @property {string} valueFormat format of the value
+ * @property {string} valueLabel lable of the value field
+ */
+
+class CirclePackedBubble extends Component {
+
+  componentDidMount() {
+    this.drawChart()
+  }
+  componentDidUpdate() {
+    this.drawChart()
+  }
+
+  drawChart() {
+    const margin = /*this.props.margin*/{ top: 30, right: 30, bottom: 70, left: 130 };
+    const data = this.props.data  // Data for the Chart
+    const legendContainer = "#" + this.props.legendContainer;// Container ID for the Chart Legend
+    const chartContainer = "#" + /*this.props.chartContainer*/"chart-container";//Conatianer ID for the Chart
+    var width = this.props.width - margin.left - margin.right;// Calculated width for the SVG
+    var height = this.props.height - margin.top - margin.bottom;// Calculated height for the SVG
+    const valueLabel = this.props.valueLabel;
+    const valueFormat = this.props.valueFormat;  
+    
+     //Assigning color scheme
+     var color=cu.get_color([],false,this.props.defined_colors);
+    //Initializes SVG element
+    cu.init_svg(chartContainer, null, margin, width, height);
+    d3.select(chartContainer).select('svg').select(".trans").selectAll(".x_axis, .y_axis, .x_lable, .y_lable").remove();
+    d3.select(chartContainer).select('svg').select('.trans').attr("transform", "translate("+width/2+","+height*0.6+")")
+    cu.createCustomTooltip(chartContainer)
+    var svg = d3.select(chartContainer).select('svg').select(".chart")
+    svg.select(".shapes").selectAll('text').remove()
+    svg.select(".shapes").selectAll('path').remove()
+    svg.select(".shapes").selectAll('line').remove()
+    svg.select(".meta").selectAll("*").remove()//Clears the SVG Meta element
+
+    if (svg.select(".shapes").selectAll("circle").size() === 0) {
+      svg.selectAll("*").remove()
+      svg.append("g")
+      .attr('class', 'meta')
+      svg.append("g")
+      .attr('class', 'shapes')
+      
+    }
+    var circles = svg.select(".shapes").selectAll("circle").data(data)
+
+    circles.exit().remove()//Clears the circle element
+
+    circles.enter().append("circle")
+
+    const pack = data => d3.pack()
+      .size([width, height])
+      .padding(3)
+      (d3.hierarchy(data)
+        .sum(d => d.size)
+        .sort((a, b) => b.size - a.size))
+
+
+    const root = pack(data);
+    let focus = root;
+    let view;
+    var metaSVG=svg.select('.shapes');
+
+    svg.select('.meta').append('rect').attr('width', width).attr('height', height).style('opacity', 0)
+      .on('dblclick', ()=>zoom(root))
+
+    svg = svg.select(".shapes")
+      .attr("viewBox", `100 100 ${width} ${height}`)
+      .style("display", "block")
+      .style("margin", "0 -14px")
+      .style("background", color(0))
+      .style("cursor", "pointer")
+      .on("click", () => zoom(root));
+
+    const node = svg
+      .selectAll("circle")
+      .attr('class','pack_circle')
+      .data(root.descendants().slice(1))
+      .join("circle")
+      .attr("fill", d =>{ while (d.depth > 1) { d = d.parent; }return color(d.data.name);})
+      .style("opacity",d=>((d.depth)*0.25) )//.attr("pointer-events", d => d.height==0 ? "none" : null)
+      .on("mouseover", function (d, i, j) { 
+        cu.showCustomTooltip(this ,function () {
+          let value = d.value
+          let valText = (valueLabel) ? valueLabel : "Value"
+          let valFmt = (valueFormat) ? valueFormat : undefined
+          let layers = d.ancestors().slice(0, -1).reverse().map((d,i) => '='.repeat(i)+"> "+d.data.name).join('\n')
+          return cu.tooltip_text_formatter({}, undefined, undefined, undefined, undefined, undefined, layers, undefined, undefined, value, valText, valFmt, 2)              
+          });
+          d3.select(this).attr("stroke", "#000"); 
+      })
+      .on("mousemove", function () {
+        cu.moveCustomTooltip(this)
+      })
+      .on("mouseleave", function (d) { cu.hideCustomTooltip();d3.select(this).attr("stroke", null);})      
+      .on("click", d => focus !== d &amp;&amp; d.height !== 0 &amp;&amp; (zoom(d), d3.event.stopPropagation()));
+
+    const label = metaSVG.append("g")
+      .style("font", "12px sans-serif")
+      .attr("pointer-events", "none")
+      .attr("text-anchor", "middle")
+      .selectAll("text")
+      .data(root.descendants())
+      .join("text")
+      .style("fill-opacity", d => d.parent === root ? 1 : 0)
+      .style("display", d => d.parent === root ? "inline" : "none")
+      .text(function (d) {return (d.data.name).length > 10? (d.data.name).slice(0,8) + '...':  d.data.name });
+
+    zoomTo([root.x, root.y, root.r *2.95]);
+
+    function zoomTo(v) {
+      const k = width / v[2] + 0.3;
+      view = v;
+      //v[0]/=3;v[1]/=6;
+      label.attr("transform", function (d) { return `translate(${(d.x - v[0]) * k},${(d.y - v[1]) * k})`});
+      node.attr("transform", d => `translate(${(d.x - v[0]) * k},${(d.y - v[1]) * k})`);
+      node.attr("r", d => d.r * k);
+    }
+
+    function zoom(d) {
+      const focus0 = focus;
+
+      focus = d;
+
+      const transition = svg.transition()
+        .duration(d3.event.altKey ? 7500 : 750)
+        .tween("zoom", d => {
+          const i = d3.interpolateZoom(view, [focus.x, focus.y, focus.r * 3]);
+          return t => zoomTo(i(t));
+        });
+
+      label
+        .filter(function (d) { return d.parent === focus || this.style.display === "inline"; })
+        .transition(transition)
+        .style("fill-opacity", d => d.parent === focus ? 1 : 0)
+        .on("start", function (d) { if (d.parent === focus) this.style.display = "inline"; })
+        .on("end", function (d) { if (d.parent !== focus) this.style.display = "none"; });
+    }
+
+
+
+
+
+  }
+
+  render() {
+    return &lt;div>&lt;/div>
+  }
+
+}
+
+export default CirclePackedBubble;</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Bubble.html">Bubble</a></li><li><a href="BubbleChart.html">BubbleChart</a></li><li><a href="BubbleMap.html">BubbleMap</a></li><li><a href="ChoroplethChart.html">ChoroplethChart</a></li><li><a href="CirclePackedBubble.html">CirclePackedBubble</a></li><li><a href="D3DensityChart.html">D3DensityChart</a></li><li><a href="Funnel.html">Funnel</a></li><li><a href="GroupBarChart.html">GroupBarChart</a></li><li><a href="HeatChart.html">HeatChart</a></li><li><a href="HorizontalStackBarChart.html">HorizontalStackBarChart</a></li><li><a href="IntervalLineChart.html">IntervalLineChart</a></li><li><a href="LineChart.html">LineChart</a></li><li><a href="NetworkChart.html">NetworkChart</a></li><li><a href="SequncesSunburst.html">SequncesSunburst</a></li><li><a href="StackBarChart.html">StackBarChart</a></li><li><a href="SunBurst.html">SunBurst</a></li><li><a href="TreeChart.html">TreeChart</a></li><li><a href="ValueBox.html">ValueBox</a></li><li><a href="ValueBoxChain.html">ValueBoxChain</a></li></ul><h3>Global</h3><ul><li><a href="global.html#addReferenceLine">addReferenceLine</a></li><li><a href="global.html#appear">appear</a></li><li><a href="global.html#BootstrapTooltip">BootstrapTooltip</a></li><li><a href="global.html#calculateLeftMargin">calculateLeftMargin</a></li><li><a href="global.html#createCustomTooltip">createCustomTooltip</a></li><li><a href="global.html#formatNumber">formatNumber</a></li><li><a href="global.html#formatString">formatString</a></li><li><a href="global.html#get_color">get_color</a></li><li><a href="global.html#hideAxes">hideAxes</a></li><li><a href="global.html#hideCustomTooltip">hideCustomTooltip</a></li><li><a href="global.html#init_chart">init_chart</a></li><li><a href="global.html#init_svg">init_svg</a></li><li><a href="global.html#init_xaxis">init_xaxis</a></li><li><a href="global.html#init_yaxis">init_yaxis</a></li><li><a href="global.html#MakeValueBoxes">MakeValueBoxes</a></li><li><a href="global.html#moveCustomTooltip">moveCustomTooltip</a></li><li><a href="global.html#onClickChangeChart">onClickChangeChart</a></li><li><a href="global.html#secondAxisLineChart">secondAxisLineChart</a></li><li><a href="global.html#secondAxisScatterChart">secondAxisScatterChart</a></li><li><a href="global.html#show_legend">show_legend</a></li><li><a href="global.html#show_second_axis">show_second_axis</a></li><li><a href="global.html#show_x">show_x</a></li><li><a href="global.html#show_y">show_y</a></li><li><a href="global.html#showCustomTooltip">showCustomTooltip</a></li><li><a href="global.html#tooltip_text_formatter">tooltip_text_formatter</a></li><li><a href="global.html#useStylesBootstrap">useStylesBootstrap</a></li><li><a href="global.html#xAxisTickFormat">xAxisTickFormat</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Fri Apr 30 2021 17:19:11 GMT+0530 (India Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

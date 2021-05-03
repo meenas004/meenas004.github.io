@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: TreeChart.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: TreeChart.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import React, { Component } from "react";
+import * as d3 from "d3";
+import * as cu from "./ChartUtils"
+import { isNumber } from "underscore";
+
+/**
+ * Component to draw Tree Chart
+ * @component
+ * @property {string} valueFormat value format
+ * @property {string} valueLabel value label
+ * @property {string} configName unique name of the app
+ * @property {number} animation animation duration
+ * @property {array} defined_colors defined color array
+ * @property {boolean} isParent whether app is parent or not
+ * @property {array} data chart data
+ * @property {number} pos chart position  
+ * @property {string} legendContainer div id of the legend container
+ */
+
+class TreeChart extends Component {
+
+  componentDidMount() {
+    this.drawChart()
+  }
+  componentDidUpdate() {
+    this.drawChart()
+  }
+
+  drawChart() {
+    const margin = /*this.props.margin*/{ top: 130, right: 30, bottom: 70, left: 130 };
+    const data = this.props.data // Data for the Chart
+    const legendContainer = "#" + this.props.legendContainer;// Container ID for the Chart Legend
+    const chartContainer = "#" + /*this.props.chartContainer*/"chart-container";//Conatianer ID for the Chart
+    var width = this.props.width - margin.left - margin.right;// Calculated width for the SVG
+    var height = this.props.height - margin.top - margin.bottom;// Calculated height for the SVG
+    const root = d3.hierarchy(data);
+    const transform = d3.zoomIdentity;
+    const valueLabel = this.props.valueLabel;
+    const valueFormat = this.props.valueFormat;
+    let node, link; let i = 0;
+
+    cu.init_svg(chartContainer, null, margin, width, height);
+    cu.hideAxes(chartContainer);
+    cu.createCustomTooltip(chartContainer)
+    d3.select(chartContainer).select('svg').attr("viewBox", [0, 0, width, height]).call(d3.zoom().scaleExtent([1 / 2, 8]).on('zoom', zoomed));
+    d3.select(chartContainer).select('svg').select('.trans').attr("transform", "translate(" + margin.left/2 + "," + margin.top + ")")
+    var svg = d3.select(chartContainer).select('svg').select('.chart');
+
+
+    svg.selectAll("*").remove()
+    svg.append("g")
+      .attr('class', 'meta')
+    svg.append("g")
+      .attr('class', 'shapes')
+
+    svg = svg.select('.meta');
+    const simulation = d3.forceSimulation()
+      .force('link', d3.forceLink().id(function (d) { return d.id; }))
+      .force('charge', d3.forceManyBody().strength(-15).distanceMax(300))
+      .force('center', d3.forceCenter(width / 2, height / 4))
+      .on('tick', ticked)
+
+
+
+    function update() {
+      const nodes = flatten(root)
+      const links = root.links()      
+      var scaler = d3.scaleLinear()
+      .domain([d3.min(nodes, (d) => d.data.size), d3.max(nodes, (d) => d.data.size)])
+      .range([5, 20]);
+
+      link = svg
+        .selectAll('.link')
+        .data(links, function (d) { return d.target.id })
+
+      link.exit().remove()
+
+      const linkEnter = link
+        .enter()
+        .append('line')
+        .attr('class', 'link')
+        .style('stroke', '#000')
+        .style('opacity', '0.7')
+        .style('stroke-width', 4)
+
+      link = linkEnter.merge(link)
+
+      node = svg
+        .selectAll('.node')
+        .data(nodes, function (d) { return d.id })
+
+      node.exit().remove()
+
+      const nodeEnter = node
+        .enter()
+        .append('g')
+        .attr('class', 'node')
+        .attr('stroke', '#000484')
+        .attr('stroke-width', 0.5)
+        .style('fill', color)
+        .style('opacity', 1)
+        .on('click', clicked)
+        .call(d3.drag()
+          .on('start', dragstarted)
+          .on('drag', dragged)
+          .on('end', dragended))
+
+      nodeEnter.append('circle')
+        .attr("r", function (d) { return scaler(d.data.size) || 4.5; })
+        .style('text-anchor', function (d) { return d.children ? 'end' : 'start'; })
+        .on("mouseover", function (d, i, j) {
+          if(d.depth!==0){  
+            cu.showCustomTooltip(this,function () {                      
+              let value = d.data.size
+              let valText = (valueLabel) ? valueLabel : "Value"
+              let valFmt = (valueFormat) ? valueFormat : undefined
+              let layers = d.ancestors().slice(0, -1).reverse().map((d,i) => '='.repeat(i)+"> "+d.data.name).join('\n')
+              return cu.tooltip_text_formatter({}, undefined, undefined, undefined, undefined, undefined, layers, undefined, undefined, value, valText, valFmt, 2)            
+            });
+          }            
+        })
+        .on("mousemove", function () {
+          cu.moveCustomTooltip(this)
+        })
+        .on("mouseleave", function (d) { cu.hideCustomTooltip() })
+        // .append("title")
+        // .text(function (d) { return d.data.name })
+
+      node = nodeEnter.merge(node)
+      simulation.nodes(nodes)
+      simulation.force('link').links(links)
+    }
+
+    function ticked() {
+      link
+        .attr('x1', function (d) { return d.source.x; })
+        .attr('y1', function (d) { return d.source.y; })
+        .attr('x2', function (d) { return d.target.x; })
+        .attr('y2', function (d) { return d.target.y; })
+
+      node
+        .attr('transform', function (d) { return `translate(${d.x}, ${d.y})` })
+    }
+    function color(d) {
+      return d._children ? "#000484" // collapsed package
+        : d.children ? "#000484" // expanded package
+          : "#003FE2"; // leaf node
+    }
+
+    function radius(d) {
+      return d._children ? 8
+        : d.children ? 8
+          : 4
+    }
+
+    function sizeContain(num) {
+      num = num > 1000 ? num / 1000 : num / 100
+      if (num &lt; 4) num = 4
+      return num
+    }
+
+    // Toggle children on click.
+    function clicked(d) {
+      if (!d3.event.defaultPrevented) {
+        if (d.children) {
+          d._children = d.children;
+          d.children = null;
+        } else {
+          d.children = d._children;
+          d._children = null;
+        }
+        update()
+      }
+    }
+    function dragstarted(d) {
+      if (!d3.event.active) simulation.alphaTarget(0.3).restart()
+      d.fx = d.x
+      d.fy = d.y
+    }
+    function dragged(d) {
+      d.fx = d3.event.x
+      d.fy = d3.event.y
+    }
+
+    function dragended(d) {
+      if (!d3.event.active) simulation.alphaTarget(0)
+      d.fx = null
+      d.fy = null
+    }
+
+    // Returns a list of all nodes under the root.
+    function flatten(root) {
+      const nodes = []
+      function recurse(node) {
+        if (node.children) node.children.forEach(recurse)
+        if (!node.id) node.id = ++i;
+        else ++i;
+        nodes.push(node)
+      }
+      recurse(root)
+      return nodes
+    }
+
+    function zoomed() {
+      d3.select(chartContainer).select('svg').selectAll('.trans').attr('transform', d3.event.transform)
+    }
+
+    update();
+
+  }
+
+  render() {
+    return &lt;div>&lt;/div>
+  }
+
+}
+
+export default TreeChart;</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Bubble.html">Bubble</a></li><li><a href="BubbleChart.html">BubbleChart</a></li><li><a href="BubbleMap.html">BubbleMap</a></li><li><a href="ChoroplethChart.html">ChoroplethChart</a></li><li><a href="CirclePackedBubble.html">CirclePackedBubble</a></li><li><a href="D3DensityChart.html">D3DensityChart</a></li><li><a href="Funnel.html">Funnel</a></li><li><a href="GroupBarChart.html">GroupBarChart</a></li><li><a href="HeatChart.html">HeatChart</a></li><li><a href="HorizontalStackBarChart.html">HorizontalStackBarChart</a></li><li><a href="IntervalLineChart.html">IntervalLineChart</a></li><li><a href="LineChart.html">LineChart</a></li><li><a href="NetworkChart.html">NetworkChart</a></li><li><a href="SequncesSunburst.html">SequncesSunburst</a></li><li><a href="StackBarChart.html">StackBarChart</a></li><li><a href="SunBurst.html">SunBurst</a></li><li><a href="TreeChart.html">TreeChart</a></li><li><a href="ValueBox.html">ValueBox</a></li><li><a href="ValueBoxChain.html">ValueBoxChain</a></li></ul><h3>Global</h3><ul><li><a href="global.html#addReferenceLine">addReferenceLine</a></li><li><a href="global.html#appear">appear</a></li><li><a href="global.html#BootstrapTooltip">BootstrapTooltip</a></li><li><a href="global.html#calculateLeftMargin">calculateLeftMargin</a></li><li><a href="global.html#createCustomTooltip">createCustomTooltip</a></li><li><a href="global.html#formatNumber">formatNumber</a></li><li><a href="global.html#formatString">formatString</a></li><li><a href="global.html#get_color">get_color</a></li><li><a href="global.html#hideAxes">hideAxes</a></li><li><a href="global.html#hideCustomTooltip">hideCustomTooltip</a></li><li><a href="global.html#init_chart">init_chart</a></li><li><a href="global.html#init_svg">init_svg</a></li><li><a href="global.html#init_xaxis">init_xaxis</a></li><li><a href="global.html#init_yaxis">init_yaxis</a></li><li><a href="global.html#MakeValueBoxes">MakeValueBoxes</a></li><li><a href="global.html#moveCustomTooltip">moveCustomTooltip</a></li><li><a href="global.html#onClickChangeChart">onClickChangeChart</a></li><li><a href="global.html#secondAxisLineChart">secondAxisLineChart</a></li><li><a href="global.html#secondAxisScatterChart">secondAxisScatterChart</a></li><li><a href="global.html#show_legend">show_legend</a></li><li><a href="global.html#show_second_axis">show_second_axis</a></li><li><a href="global.html#show_x">show_x</a></li><li><a href="global.html#show_y">show_y</a></li><li><a href="global.html#showCustomTooltip">showCustomTooltip</a></li><li><a href="global.html#tooltip_text_formatter">tooltip_text_formatter</a></li><li><a href="global.html#useStylesBootstrap">useStylesBootstrap</a></li><li><a href="global.html#xAxisTickFormat">xAxisTickFormat</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Fri Apr 30 2021 17:19:11 GMT+0530 (India Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: LineChart.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: LineChart.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import React, { Component } from "react";
+import * as d3 from "d3";
+import * as cu from "./ChartUtils"
+import styleJson from './../styles/root'
+var parent_data = {};
+/**
+ * Component to draw line chart
+ * @component
+ * @property {json} secondAxis second axis
+ * @property {string} referenceLineLabel reference line value
+ * @property {string} configName unique name of the aop
+ * @property {string} xaxisformat x axis format
+ * @property {string} yaxisformat y axis format
+ * @property {number} animation animation duration
+ * @property {json} replaceVals replacement json [these values will be replaced in tooltip]
+ * @property {boolean} isParent parent or not
+ * @property {array} data chart data
+ * @property {string} x_label x axis label
+ * @property {string} y_label y axis label
+ * @property {boolean} clickToFilter whether click to filter functionality is there or not
+ * @property {json} children chart toggle params
+ * @property {string} filterSource filter source field
+ * @property {number} pos chart position
+ * @property {number} referenceLineValue reference line value
+ * @property {string} referenceLineColor refernce line color
+ * @property {string} legendContainer legend container div
+ * @property {string} selectedField selected field column/field name
+ * @property {string} selectedValue selected field value
+ */
+class LineChart extends Component {
+  componentDidMount() {
+    this.drawChart()
+  }
+
+  componentDidUpdate() {
+    this.drawChart()
+  }
+
+  drawChart() {
+    const globalColorScheme = d3.schemeSet2;
+    const margin = { top: 30, right: 70, bottom: 70, left: 130 };
+    const anim_dur = this.props.animation;
+    const isParent = this.props.isParent;
+    if (this.props.isParent) {
+      parent_data = this.props.data
+    }
+    var definedColors = this.props.defined_colors;
+    var data = this.props.data
+    const y_label = this.props.y_label;
+    const x_label = this.props.x_label;
+    const legendContainer = "#" + this.props.legendContainer;
+    const chartContainer = "#" + "chart-container";
+    const xAxisFormat = this.props.xaxisformat;
+    const yAxisFormat = this.props.yaxisformat;
+    const children = this.props.children;
+    var configName = this.props.configName;
+    const clickToFilter = this.props.clickToFilter;
+    const ifClickChildren = this.props.ifClickChildren;
+    const filterSource = this.props.filterSource;
+    const referenceLineValue = this.props.referenceLineValue, referenceLineColor = this.props.referenceLineColor;
+    var pos = this.props.pos;
+    const selectedField = this.props.selectedField, selectedValue = this.props.selectedValue;
+    var width = this.props.width - margin.left - margin.right;
+    var height = this.props.height - margin.top - margin.bottom;
+    var secondAxis = this.props.secondAxis;
+    var referenceLineLabel = this.props.referenceLineLabel;
+    var replaceVals = this.props.replaceVals;
+    data = data.filter(function (e) {
+      return e[selectedField] == selectedValue;
+    });
+    var colors = data.map(function (obj) { return obj.color; });
+    colors = colors.filter(function (v, i) { return colors.indexOf(v) == i; });
+
+
+    // group the data: I want to draw one line per group
+    var sumstat = d3.nest() // nest function allows to group the calculation per level of a factor
+      .key(function (d) { return d.color; })
+      .entries(data);
+    // color palette
+    var res = sumstat.map(function (d) { return d.key }) // list of group names
+    var color = cu.get_color(res, false, this.props.defined_colors)
+
+    var x_group = d3.map(data, function (d) { return (d.x_axis) }).keys();
+    var y_group = [d3.min(data, function (d) { return d.y_axis; }), d3.max(data, function (d) { return +d.y_axis; })];
+
+    if(/(^-\d+\.\d+$|^-\d+$)|(^\d+\.\d+$|^\d+$)/.test(x_group[0]) &amp;&amp; xAxisFormat!=='NA' &amp;&amp; xAxisFormat!=="nan" &amp;&amp; xAxisFormat!=="time"){ 
+      x_group = [d3.min(x_group, (d) => parseFloat(d)), d3.max(x_group, (d) => parseFloat(d))];
+    }
+
+    if (xAxisFormat == "time") {
+      x_group = x_group.map(Number);
+    }
+
+    if(referenceLineValue!=undefined&amp;&amp;referenceLineValue>y_group[1])
+    { y_group[1]=referenceLineValue}
+    margin.left = cu.calculateLeftMargin(y_group);
+    var width = this.props.width - margin.left - margin.right;
+    var height = this.props.height - margin.top - margin.bottom;
+
+    cu.init_svg(chartContainer, legendContainer, margin, width, height)
+
+    var xAxisRes = cu.show_x(chartContainer, height, width, x_group, x_label, margin, anim_dur, d3.easeBack, xAxisFormat, true)
+
+    var yAxisRes = cu.show_y(chartContainer, height, y_group, y_label, margin, anim_dur, d3.easeBack, yAxisFormat);
+    var x = xAxisRes[1], y = yAxisRes[1], y2;
+
+    if (secondAxis != undefined &amp;&amp; secondAxis != null) {
+      var data2 = secondAxis.data;
+      var y_group2 = [d3.min(data2, function (d) { return d.y_axis; }), d3.max(data2, function (d) { return +d.y_axis; })];
+      var yAxisResSecond = cu.show_second_axis(chartContainer, height, width, y_group2, secondAxis.y_axis_label, margin, anim_dur, d3.easeBack)
+      y2 = yAxisResSecond[1];
+    }
+
+    cu.createCustomTooltip(chartContainer);
+
+    cu.show_legend(legendContainer, res, color)
+
+    var svg = d3.select(chartContainer).select('svg').select(".chart");
+
+    //remove unnecessary shapes from the svg
+    svg.select(".meta").selectAll("*").remove()
+    svg.select(".shapes").selectAll("circle").remove();
+    svg.select(".shapes").selectAll("text").remove();
+
+    // Draw the line  
+    if (svg.select(".shapes").selectAll("path").size() === 0) {
+
+      svg.selectAll("*").remove()
+      svg.append("g")
+        .attr('class', 'meta')
+      svg.append("g")
+        .attr('class', 'shapes')
+    }
+    var re_width = this.props.width;
+    var re_height = this.props.height;
+
+    svg.select('.meta').append('rect').attr('width', width).attr('height', height).style('opacity', 0)
+      .on('dblclick', function (i, n) {
+        if (!isParent) {
+          if (ifClickChildren) {
+            cu.onClickChangeChart(null, re_height, re_width, legendContainer.slice(1), null, null, false, pos, configName);
+          } else {
+            if (clickToFilter) {
+              var redraw = new LineChart();
+              redraw.props = {
+                configName: configName, defined_colors: definedColors, data: parent_data, width: re_width,
+                height: re_height, x_label: x_label, y_label: y_label, legendContainer: legendContainer.slice(1),
+                clickToFilter: clickToFilter, children: children, filterSource: filterSource, referenceLineValue: referenceLineValue,
+                referenceLineColor: referenceLineColor, xaxisformat: xAxisFormat, yaxisformat: yAxisFormat
+              }
+              redraw.drawChart();
+            }
+          }
+        }
+      })
+    var paths = svg.select(".shapes")
+      .selectAll('path')
+      .data(sumstat)
+
+    paths.exit().remove();
+
+    paths.enter().append("path")
+
+   svg.select(".shapes").selectAll('path')
+      .attr("class", function (d) { return "category _" + d.key.replace(/[^a-zA-Z0-9]/g, '') })
+      .on("mouseover", cu.mouseover)
+      .on("mouseleave", cu.mouseleave)
+      .on("click", function (d) {
+        var selected_field = d.key;
+        if (clickToFilter) {
+          var newArr = data.filter(function (e) {
+            return e[filterSource] == selected_field;
+          });
+          var redraw = new LineChart();
+          redraw.props = {
+            configName: configName, defined_colors: definedColors, data: newArr, width: re_width, height: re_height,
+            x_label: x_label, y_label: y_label, legendContainer: legendContainer.slice(1), clickToFilter: clickToFilter,
+            children: children, filterSource: filterSource, referenceLineValue: referenceLineValue,
+            referenceLineColor: referenceLineColor, xaxisformat: xAxisFormat, yaxisformat: yAxisFormat
+          }
+          redraw.drawChart();
+        }
+        else if (Object.keys(children).length != 0) {
+          var childChart = children;
+          if (ifClickChildren) {
+            cu.onClickChangeChart(null, re_height, re_width, null, null, null, false, pos, configName);
+          } else {
+            cu.onClickChangeChart(childChart, re_height, re_width, legendContainer.slice(1), children.filtertarget, selected_field, true, pos, configName);
+          }
+        }
+      })
+      .transition().duration(anim_dur).ease(d3.easeBack)
+      .attr("fill", "none")
+      .attr("stroke", function (d) { return color(d.key) })
+      .attr("stroke-width", 4)
+      .attr("d", function (d) {
+        return d3.line()
+          .x(function (d) { return x(d.x_axis); })
+          .y(function (d) { return y(+d.y_axis); })
+          (d.values)
+      })
+      .style("opacity", 1)
+
+      
+
+    if (secondAxis != undefined &amp;&amp; secondAxis != null) {
+      var sumstat2 = d3.nest() // nest function allows to group the calculation per level of a factor
+        .key(function (d) { return d.color; })
+        .entries(secondAxis.data);
+      cu.secondAxisLineChart(svg.select(".shapes"), sumstat2, anim_dur, x, y2, color);
+    }
+
+
+    var circles = svg.select(".shapes").selectAll("circle").data(data)
+
+    circles.exit().remove()
+
+    circles.enter().append("circle");
+
+    svg.select(".shapes").selectAll("circle")
+      .on("mouseover", function (d, i, j) {
+        cu.showCustomTooltip(this, function () {
+          try{
+          let lodToShow = d.lod;
+          let colorToShow = d.color;
+          let xAxisToShow = d.x_axis;
+          let yAxisToShow = d.y_axis;
+          if(xAxisFormat=='NA' || xAxisFormat=="nan"){ 
+            xAxisToShow = String(xAxisToShow)            
+          }
+          return cu.tooltip_text_formatter(replaceVals,xAxisToShow,yAxisToShow,x_label,y_label,lodToShow,colorToShow,yAxisFormat,xAxisFormat)                    
+        }catch(err){}});
+
+      })
+      .on("mousemove", function () { cu.moveCustomTooltip(this) })
+      .on("mouseleave", function (d) { cu.hideCustomTooltip(); })
+      .attr("r", 8)
+      .attr("cx", function (d) { return x(d.x_axis); })
+      .attr("cy", function (d) { return y(+d.y_axis); })
+      .style("fill", function (d) { return color(d.color); })
+      .style("opacity", 0)
+      .lower()
+      .lower();
+
+
+
+    svg.append('rect')
+      .attr('height', height)
+      .attr('width', width)
+      .attr('fill', styleJson.root.backgroundColor)
+      .transition()
+      .attr('transform', 'translate(' + width + ',0)')
+      .duration(2000)
+      .remove()
+
+    if (referenceLineValue != undefined) {
+      cu.addReferenceLine(svg.select('.shapes'), x_group, referenceLineValue, referenceLineColor, x, y);
+      d3.select(chartContainer).select('svg').select('.shapes').select('.regression')
+        .on("mouseover", function (d, i, j) {
+          cu.showCustomTooltip(this, function () {
+            return referenceLineLabel + ": " + cu.formatNumber(referenceLineValue, yAxisFormat)
+          });
+
+        })
+        .on("mousemove", function () {
+          cu.moveCustomTooltip(this)
+        })
+        .on("mouseleave", function (d) { cu.hideCustomTooltip(); })
+    }
+    else { svg.select(".shapes").selectAll('.regression').remove(); }
+
+  }
+
+  render() {
+    return &lt;div>&lt;/div>
+  }
+
+}
+
+export default LineChart;
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Bubble.html">Bubble</a></li><li><a href="BubbleChart.html">BubbleChart</a></li><li><a href="BubbleMap.html">BubbleMap</a></li><li><a href="ChoroplethChart.html">ChoroplethChart</a></li><li><a href="CirclePackedBubble.html">CirclePackedBubble</a></li><li><a href="D3DensityChart.html">D3DensityChart</a></li><li><a href="Funnel.html">Funnel</a></li><li><a href="GroupBarChart.html">GroupBarChart</a></li><li><a href="HeatChart.html">HeatChart</a></li><li><a href="HorizontalStackBarChart.html">HorizontalStackBarChart</a></li><li><a href="IntervalLineChart.html">IntervalLineChart</a></li><li><a href="LineChart.html">LineChart</a></li><li><a href="NetworkChart.html">NetworkChart</a></li><li><a href="SequncesSunburst.html">SequncesSunburst</a></li><li><a href="StackBarChart.html">StackBarChart</a></li><li><a href="SunBurst.html">SunBurst</a></li><li><a href="TreeChart.html">TreeChart</a></li><li><a href="ValueBox.html">ValueBox</a></li><li><a href="ValueBoxChain.html">ValueBoxChain</a></li></ul><h3>Global</h3><ul><li><a href="global.html#addReferenceLine">addReferenceLine</a></li><li><a href="global.html#appear">appear</a></li><li><a href="global.html#BootstrapTooltip">BootstrapTooltip</a></li><li><a href="global.html#calculateLeftMargin">calculateLeftMargin</a></li><li><a href="global.html#createCustomTooltip">createCustomTooltip</a></li><li><a href="global.html#formatNumber">formatNumber</a></li><li><a href="global.html#formatString">formatString</a></li><li><a href="global.html#get_color">get_color</a></li><li><a href="global.html#hideAxes">hideAxes</a></li><li><a href="global.html#hideCustomTooltip">hideCustomTooltip</a></li><li><a href="global.html#init_chart">init_chart</a></li><li><a href="global.html#init_svg">init_svg</a></li><li><a href="global.html#init_xaxis">init_xaxis</a></li><li><a href="global.html#init_yaxis">init_yaxis</a></li><li><a href="global.html#MakeValueBoxes">MakeValueBoxes</a></li><li><a href="global.html#moveCustomTooltip">moveCustomTooltip</a></li><li><a href="global.html#onClickChangeChart">onClickChangeChart</a></li><li><a href="global.html#secondAxisLineChart">secondAxisLineChart</a></li><li><a href="global.html#secondAxisScatterChart">secondAxisScatterChart</a></li><li><a href="global.html#show_legend">show_legend</a></li><li><a href="global.html#show_second_axis">show_second_axis</a></li><li><a href="global.html#show_x">show_x</a></li><li><a href="global.html#show_y">show_y</a></li><li><a href="global.html#showCustomTooltip">showCustomTooltip</a></li><li><a href="global.html#tooltip_text_formatter">tooltip_text_formatter</a></li><li><a href="global.html#useStylesBootstrap">useStylesBootstrap</a></li><li><a href="global.html#xAxisTickFormat">xAxisTickFormat</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Fri Apr 30 2021 17:19:11 GMT+0530 (India Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

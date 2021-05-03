@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: FormApp.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: FormApp.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import React from 'react';
+import SelectInput from './SelectInput';
+import { Navbar, Nav } from 'react-bootstrap';
+import {Button, Grid, Typography, Divider, IconButton} from '@material-ui/core';
+import * as inputJson from './Input.json';
+import * as ChartFun from './ChartFun.json';
+import RadioButtonGroup from './RadioButtonGroup';
+import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
+import {FileCopy, Delete, DeleteTwoTone} from '@material-ui/icons';
+import FormHelperText from '@material-ui/core/FormHelperText';
+import Accordion from '@material-ui/core/Accordion';
+import Overview from './Overview';
+import {ToastContainer, toast} from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import AccordionDetails from '@material-ui/core/AccordionDetails';
+import AccordionSummary from '@material-ui/core/AccordionSummary';
+import AccordionActions from '@material-ui/core/AccordionActions';
+import logo from './logo.svg';
+import './../../App.css';
+import TextInput from './TextInput';
+import TextArea from './TextArea';
+import ParaInput from './ParaInput';
+import Modal from './Modal';
+import $ from 'jquery';
+import ApiInput from './ApiInput'
+import MultiPageFormApp from './MultiPageFormApp'
+import GetProjectList from '../utils/getProjectList';
+import 'bootstrap/dist/css/bootstrap.css';
+import KPICard from './KPICard' 
+
+
+/**
+ * To compare two strings case insensitive comparison
+ * @param {string} a string 1
+ * @param {string} b string 2
+ *  
+ */
+function compareStrings(a, b) {
+  // Assuming you want case-insensitive comparison
+  a = a.toLowerCase();
+  b = b.toLowerCase();
+
+  return (a &lt; b) ? -1 : (a > b) ? 1 : 0;
+}
+
+/**
+ * This is the form app's main component. It renders elements based on the json element structure present in the state
+ * @component 
+ * FormApp Component
+ * @property {json} configJson json object maitaining the form state 
+ * @property {json} databases object maitntaining the list of databases in each page/accordion
+ * @property {json} chartType_val object maintainig the list of chart type in each page/accordion
+ * @property {json} pos object maintainig the list of chart type in each accordion
+ * @property {json} layout object maintainig the list of layout in each page/accordion
+ * @property {boolean} ifMultiPage whether app is in multiple projects mode or not
+ * @property {boolean} apiCalled whether backend APIs has been called or not 
+ */
+class FormApp extends React.Component {
+  constructor(props){
+    super(props);
+    this.configJson = {
+      1:[
+      [
+        {
+          field:"overview", relationship: "parent", inputType: 'overview', label: 'Baseline Requirements',
+          helperText: "&lt;p>Baseline requirement are basic requirements for any slide. The brief about each is as follows:&lt;/p>&lt;ul>&lt;li>&lt;u>Position&lt;/u>: Position of a slide in the app. For title page, position has to be equal to 0 while for wrap-up (thank you slide), the variable has to be &amp;quot;-1&amp;quot;&lt;/li>&lt;li>&lt;u>Layout&lt;/u>: Alignment of chart &amp;amp; text on the screen. &lt;/li>&lt;li>&lt;u>Chart Type&lt;/u>: Chart type&lt;/li>&lt;li>&lt;u>Functionality&lt;/u>: Select the functionality of chart. Chart can act as a default chart, parent to a chart (default clickthrough), child (Subchart clickthrough) or sibling to another toggle chart (Subchart Toggle)&lt;/li>&lt;/ul>"
+        },
+        {
+          field: "pos", id:'pos', relationship: "parent", inputType: 'text_input', label: 'Position', selectedOption: null
+        },
+        {
+          field: 'chart_type', id:'chart_type', relationship: "parent", inputType: 'select_input', label: 'Chart Type', selectedOption: null, 
+          options: [{label: "Bubble Map", value: "bubble_map"}, {label: "Group Bar Chart", value: 'group_bar'},{label: "Density Chart", value: "density_chart"},{label: "Confusion Matrix", value: "conf_matrix"},{label: "KPIs &amp; Feature Importance", value: "feature_importance_kpi"},{label: "Feature Importance", value: "feature_importance"}, {label: "KPI Cards", value: "value_chain"}, {label: "Webpage Embedding", value: "ext_page"}, {label: "Sequences Sunburst", value: "sequences_sunburst"}, {label:"Interval Line chart", value: "interval_line_chart"}, {label: 'Video', value: 'video'}, {label: 'US Choropleth Chart', value: 'choropleth_chart'}, {label: 'Sankey', value: 'sankey'}, {label: 'Line Chart', value: 'line_chart'}, {label: 'Scatter Chart', value: 'scatter_chart'}, {label:"Bubble Chart", "value": "bubble_chart"}, {label: 'Stackbar Chart', value: 'stack_bar'}, {label: 'Horizontal Stackbar Chart', value: 'stack_bar_hor'}, {label: 'Sunburst', value: 'sunburst'}, {value: 'network_chart', label: 'Network Chart'}, {value: 'tree_chart', label: 'Tree Map'}, {value: 'funnel_chart', label: 'Funnel chart'}, {value: 'heat_map', label: 'Heat Map'}, {value: 'illu_image', label: 'Image'}, {value: 'multi_image', label: 'Image Carousel'}, {value: 'decision_tree', label: 'Decision Tree'}, {label: 'Dynamic Horizontal Stackbar Chart', value: 'stack_bar_hor_dynamic'}, {value: 'stack_bar_dynamic', label: 'Dynamic Stackbar Chart'},{value: 'scatter_chart_dynamic', label: 'Dynamic Scatter Chart'},{value: 'line_chart_dynamic', label: 'Dynamic Line Chart'}, {label: "Circle Packed Bubble", value: 'packed_bubble_chart'}],    
+        },
+        {
+          field: 'layout', id: 'layout', relationship: "parent", inputType: 'select_input', label: 'Layout', selectedOption: {label: 'Left text - right chart', value: 'left-text'},
+          options: [{label: 'Left chart - right text', value: 'right-text'}, {label: 'Left text - right chart', value: 'left-text'}, {label: 'Top text  - bottom chart', value: 'center-top'}, {label: 'Top Chart - bottom text', value: 'center-bottom'}],
+        },
+        {
+          field: 'chart_functionality', relationship: "parent", id: 'chart_functionality', inputType: 'select_input', label: 'Functionality', selectedOption: {"label": "Primary", "value": "Parent"},
+          options: [{label: 'Toggle Parent', value: 'Toogle Parent'}, {label: 'Toggle Children', value: 'Children'}, {label: 'Click Through Children', value: 'Click Children'}, {label: 'Click Through Parent', value: 'Click Children Parent'}],    
+        }
+      ]
+    ]
+  }
+
+    this.state = {
+      configJson: null,
+      databases: {}, 
+      chartType_val: {},
+      pos: {},
+      layout: {},
+      exapnded: true,
+      ifMultiPage: null,
+      apiCalled: false
+    }
+}
+/**
+ * function runs when the user clicks on "Submit &amp; Preview" button. 
+ * It parses the configJson state object and creates an array of jsons (having field as key &amp; selectedOption as value) like [{chart_type: "bubble_chart"}]
+ */
+  sendConfigToBackend = async () => {
+    let inputJson = JSON.parse(JSON.stringify(this.state.configJson))
+    let keys = Object.keys(inputJson)
+    let backendTbl = []
+    for(let i = 0; i&lt;keys.length; i++){
+      let key = keys[i];
+      let elmJson = inputJson[key]
+      let json = {}
+      for(let j=0; j&lt;elmJson.length; j++){
+        let elmArray = elmJson[j]
+        for(let k = 0; k&lt;elmArray.length; k++){
+          let obj = elmArray[k]
+          if(!obj.selectedOption){
+            if(obj.isMandatory === false || obj.inputType === 'overview'){ 
+
+            }
+            else {
+              alert('Some Mandatory fields are missing')
+              return false;
+            }
+          }
+          if(obj.inputType === 'api_input_multiple' || obj.inputType === 'multi_select_input'){
+            let selectedOptions = []
+            if(obj.selectedOption !== null &amp;&amp; obj.selectedOption !== []){
+              obj.selectedOption.map(val => {
+                selectedOptions.push(val.value)
+              })
+              json[obj.field] = selectedOptions.toString();
+            }
+          } else if(obj.inputType === 'text_input' || obj.inputType === 'text_area' || obj.inputType === 'modal' || obj.inputType === 'para_input' || obj.inputType === 'multi_input' || obj.inputType === 'radio_button_input'){
+            json[obj.field] = obj.selectedOption
+          } else if(obj.inputType === 'kpi_card'){
+            json[obj.field] = obj.selectedOption
+          }
+          else {
+            json[obj.field] = (obj.selectedOption)?obj.selectedOption['value']: null
+          }
+        }
+      
+      }
+      backendTbl.push(json)
+    }
+    let submissionVal = await $.ajax({
+      url: process.env.REACT_APP_MODE === "dev"?'http://127.0.0.1:4005/app_submit': window.getWebAppBackendUrl('app_submit'),
+      // url: 'http://127.0.0.1:4005/app_submit',
+      type: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify({
+        cache: JSON.stringify({"configJson": this.state.configJson, "databases": this.state.databases, "chartType_val": this.state.chartType_val, "layout": this.state.layout, pos: this.state.pos}),
+        config: backendTbl
+      }),
+      dataType: 'json',
+      success: function(result){
+        if(result.status){
+          toast.success('Submission successful')
+          return true;
+        } else {
+          toast.error('Submission failed')
+          return false;
+        }
+        console.log('backendTbl')
+        console.log(backendTbl)
+      },
+      error: function(error){
+        alert('Server side error: ' + error.statusText)
+        return false
+      }
+  });
+  return submissionVal
+  }
+/**
+ * function runs when the user clicks on "Save" button.
+ * It sends the configJson, databases, chartType_val, layout and pos to the backend
+ */
+  saveCache = async () => {
+    let inputJson = JSON.parse(JSON.stringify(this.state.configJson))
+    let keys = Object.keys(inputJson)
+    let submissionVal = await $.ajax({
+      url: process.env.REACT_APP_MODE === "dev"?'http://127.0.0.1:4005/app_submit':window.getWebAppBackendUrl('app_submit'),
+      // url: 'http://127.0.0.1:4005/app_submit',
+      type: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify({
+        cache: JSON.stringify({"configJson": this.state.configJson, "databases": this.state.databases, "chartType_val": this.state.chartType_val, "layout": this.state.layout, pos: this.state.pos}),
+      }),
+      dataType: 'json',
+      success: function(result){
+        if(result.status){
+          toast.success('Your selections have been saved')
+          return true;
+        } else {
+          toast.error('Your changes could not be saved. Please try again and if issue persists, please contact dev team')
+          return false;
+        }
+      },
+      error: function(error){
+        alert('Server side error: ' + error.statusText)
+        return false
+      }
+  });
+  return submissionVal
+  }
+/**
+ * 
+ * @property {json} val selectedOption in {value: "exampleValue", label: "ExampleLabel"} formate 
+ * @property {string} pos pos of the object in the row 
+ * @property {string} parent_pos pos of the row in the accordion
+ * @property {string} el_pos pos of the accordion 
+ * @property {string} id id of the element 
+ */
+  handleDropDownChange = (val, pos, parent_pos, el_pos, id) => {
+    var chartFun;
+    let entireJson = JSON.parse(JSON.stringify(this.state.configJson));
+    let elmJson = entireJson[el_pos];
+    let ddJson = elmJson[parent_pos];
+    if(ddJson[pos]){
+      ddJson[pos].selectedOption = val;
+    } else return null
+    
+
+    if(id === 'chart_type'){
+      if(!this.state.chartType_val){
+        this.setState({
+          chartType_val: {}
+        })
+        this.state.chartType_val[el_pos] = val
+      } else {
+        this.state.chartType_val[el_pos] = val
+      }
+      delete this.state.databases[el_pos]
+      chartFun = ddJson[4].selectedOption
+      ddJson[4].selectedOption = null
+    } else if(id === 'pos'){
+      this.state.pos[el_pos] = val
+      if(val === 0 || val === -1) ddJson[2].selectedOption = {label: 'Left text - right chart', value: 'left-text'}
+    } else if(id === 'layout'){
+      if(!val){
+        // this.state.layout[el_pos] =  null
+      } else {
+        this.state.layout[el_pos] = val.label
+        
+      }
+      
+    }
+    if(val &amp;&amp; (id === 'dataset' || id === 'model_id')){
+      this.state.databases[el_pos] = val.label;
+    }
+
+    let InputJson = JSON.parse(JSON.stringify(inputJson)).default
+    for(var i = 0; i&lt;elmJson.length; i++){
+      let arr = elmJson[i]
+      for(var j = 0; j&lt;arr.length; j++){
+        let obj = arr[j]
+        if(obj.relationship === id){
+          delete arr[j]
+        }
+        if(id === 'chart_type'){
+          if(obj.relationship === 'chart_functionality'){
+            delete arr[j]
+          }
+        }
+      }
+      arr = arr.filter(obj => { return (obj !== undefined)})
+      elmJson[i] = arr
+    }
+
+    if(val &amp;&amp; InputJson.hasOwnProperty(id)){
+      let elsToBeInserted = InputJson[id]
+      if(elsToBeInserted.hasOwnProperty(val.value)){
+        elsToBeInserted = elsToBeInserted[val.value]
+        elsToBeInserted.map(arr => {
+          elmJson.push(arr)
+        })
+      }
+      
+    }
+    this.setState({ configJson: entireJson }, () => {
+      if(id = 'pos' &amp;&amp; (val === "0" || val === '-1')){
+        this.handleDropDownChange({label: "Parent", value: "Parent"}, 4, parent_pos, el_pos, "chart_functionality")  
+      }else if(id = 'chart_type' &amp;&amp; chartFun){
+        this.handleDropDownChange(chartFun, 4, parent_pos, el_pos, "chart_functionality")
+      }
+      console.log(this.state.configJson)
+    })
+   
+  }
+
+  /**
+   * Handles the input change of Modal
+   * @property {json} state output from the modal
+   * @property {number} pos pos of the element in the row 
+   * @property {number} parent_pos pos of the row in the accordion
+   * @property {number} el_pos pos of the accordion in the page 
+   * @property {string} id id of the element
+   */
+  handleModal = (state, pos, parent_pos, el_pos, id) => {
+    let entireJson = JSON.parse(JSON.stringify(this.state.configJson));
+    let elmJson = entireJson[el_pos];
+    let ddJson = elmJson[parent_pos];
+    ddJson[pos].state = state;
+    this.setState({ configJson: entireJson })
+  }
+/**
+ * Copies an element when users click on 'copy' element
+ * @property {number} parentPos position of the accordion in the page
+ */
+  copyEls = (parentPos) => {
+    var oldJson = this.state.configJson;
+    console.log(oldJson)
+    var pos = parentPos;
+    var el = oldJson[pos];
+    let keys = Object.keys(oldJson)
+    if(keys.length === 0){
+      var toPos = 1;
+    } else {
+      var toPos = Math.max(...keys) + 1;
+    }
+    oldJson[toPos] = el;
+    this.setState({
+      configJson: oldJson
+    }, console.log(this.state.configJson))
+    this.state.databases[toPos] = this.state.databases[parentPos];
+    this.state.chartType_val[toPos] = this.state.chartType_val[parentPos];
+    this.state.pos[toPos] = this.state.pos[parentPos];
+    this.state.layout[toPos] = this.state.layout[parentPos]
+  }
+/**
+ * Delete an element when users click on 'delete' element
+ * @property {number} key position of the accordion in the page
+ */
+  delEls = (key) => {
+    var newJson = JSON.parse(JSON.stringify(this.state.configJson));
+    console.log(newJson)
+    delete newJson[key];
+    delete this.state.pos[key]
+    delete this.state.chartType_val[key]
+    delete this.state.layout[key]
+    delete this.state.databases[key]
+    var keys = Object.keys(newJson);
+    this.setState({
+      configJson: newJson
+    })
+  }
+
+  /**
+   * Fetches the cache on the app start; if no cache is present the app required object are set to default values
+   */
+  startApp = async () => {
+    // 'http://127.0.0.1:4005/app_start'
+    // window.getWebAppBackendUrl('app_start')
+    if(this.state.apiCalled === false){
+      let apiOutput = await GetProjectList(process.env.REACT_APP_MODE)
+      let url = process.env.REACT_APP_MODE === "dev"?'http://127.0.0.1:4005/app_start':window.getWebAppBackendUrl('app_start');
+      let config = await $.getJSON(url, function(output){
+        console.log(output)
+        return output
+      })
+
+      if(config.data === 'NA'){
+        this.setState({
+          configJson: this.configJson,
+          ifMultiPage: !apiOutput.ifSinglePage
+        })
+      } else {
+        config = JSON.parse(config.data)
+        this.setState({
+          configJson: config.configJson,
+          databases: config.databases,
+          chartType_val: config.chartType_val,
+          layout: config.layout,
+          pos: config.pos,
+          ifMultiPage: !apiOutput.ifSinglePage
+        })
+      }
+      this.setState({
+        apiCalled: true
+      })
+    }
+    
+  }
+
+  /**
+   * Adds another element in the form
+   */
+  addEl = (key) =>{
+    var newJson = JSON.parse(JSON.stringify(this.state.configJson));
+    var keys = Object.keys(newJson);
+    if(keys.length === 0){
+      var toPos = 1;
+    } else {
+      var toPos = Math.max(...keys) + 1;
+    }
+    
+    newJson[toPos] = this.configJson[1]
+    this.setState({
+      configJson: newJson
+    })
+  }
+
+  /**
+   * Get whether the dropdown needs to be disabled or not 
+   */
+  getDisabled = (el, key) =>{
+    if(el.field==='filtersource' &amp;&amp; this.state.configJson[key][0][2]['selectedOption'] &amp;&amp; this.state.configJson[key][0][2]['selectedOption']['value']==='choropleth_chart'){
+      return true
+    }
+
+    /**
+     * need to disable chart functionality &amp; layout dropdowns at pos 0 &amp; pos -1 
+     */
+    if(el.id ==='chart_functionality' || el.id === 'layout') {
+      if(this.state.pos[key] &amp;&amp; this.state.pos[key]!== "0" &amp;&amp; this.state.pos[key] !== -1 &amp;&amp; (this.state.chartType_val[key] || el.id==='layout')) return false;
+      return true
+      } else {
+        return false
+      }
+  }
+
+  /**
+   * get options for select input/dropdowns
+   */
+   
+  getSelectInputOptions = (el, key) => {
+    //layout options for non charting elements like image, image carousel, video &amp; webpage embedding; the updated layouts include no-text option for these charts
+    if(el.field==='layout' &amp;&amp; this.state.configJson[key][0][2]['selectedOption'] &amp;&amp; 
+      (this.state.configJson[key][0][2]['selectedOption']['value']==='illu_image' || this.state.configJson[key][0][2]['selectedOption']['value']==='multi_image'
+      || this.state.configJson[key][0][2]['selectedOption']['value']==='video' || this.state.configJson[key][0][2]['selectedOption']['value']==='ext_page')){
+      return [{label:'Center chart - no text', value: 'no-text'}, {label: 'Left chart - right text', value: 'right-text'}, {label: 'Left text - right chart', value: 'left-text'}, {label: 'Top text  - bottom chart', value: 'center-top'}, {label: 'Top Chart - bottom text', value: 'center-bottom'}]
+    }
+
+    //returning fips id for filtersource in case of choropleth_chart
+    if(el.field==='filtersource' &amp;&amp; this.state.configJson[key][0][2]['selectedOption'] &amp;&amp; this.state.configJson[key][0][2]['selectedOption']['value']==='choropleth_chart'){
+      return [{label:"FIPS ID", value: "id"}]
+    }
+    //returning city column &amp; continent column as options for filtersource in case of bubble_map
+    if(el.field==='filtersource' &amp;&amp; this.state.configJson[key][0][2]['selectedOption'] &amp;&amp; this.state.configJson[key][0][2]['selectedOption']['value']==='bubble_map'){
+      return [{label:"City Column", value: "homecity"},{label: "Continent Column", value: "homecontinent"}]
+    } else if(el.id==='chart_functionality' &amp;&amp; this.state.chartType_val[key]){
+      //get options for chart functionality
+      return ChartFun.default[this.state.chartType_val[key]['value']].sort(function(a,b){return a.label - b.label})
+    }else{
+      return el.options.sort(function(a,b){return a.label - b.label})
+    }
+  }
+
+  /**
+   * returning selectedOptions; implemented for fetching selectedOption of filtersource in choropleth
+   * @property {json} el properties of the json
+   * @property {number} key position of the accordion on the page
+   */
+  getSelectedOption = (el, key) => {
+    if(el.field==='filtersource' &amp;&amp; this.state.configJson[key][0][2]['selectedOption'] &amp;&amp; this.state.configJson[key][0][2]['selectedOption']['value']==='choropleth_chart'){
+      return {label:"FIPS ID", value: "id"}
+    } else {
+      return el.selectedOption
+    }
+  }
+  
+  /**
+   * The control remains in the current folder if app is single project app otherwise shift remains in the MultiProjectApp.js
+   * This is checked from this.state.ifMultiPage
+   */
+  render(){
+    if(this.state.configJson){
+      var configPosKeys = Object.keys(this.state.configJson)
+    }
+    $(document).ready(function(){
+      $("#start_page_button").click()
+    })
+
+    // document.getElementById('app_container').style.background = 'rgb(245, 244, 241)'
+    
+    try{
+      return (
+      &lt;React.Fragment>
+        {!this.state.configJson &amp;&amp; &lt;Button id = 'start_page_button' onClick ={() => {this.startApp()}}>&lt;/Button>}
+        {(this.state.ifMultiPage===true) &amp;&amp; &lt;MultiPageFormApp handleChange = {this.props.handleChange} />    }
+        {(this.state.ifMultiPage==false)  &amp;&amp;  this.state.configJson &amp;&amp; &lt;Grid container direction = 'column' style={{display: 'block'}}>
+        &lt;div>
+        &lt;Navbar collapseOnSelect expand="lg" bg="dark" variant="dark" className="fixed-navbar">
+            &lt;Navbar.Brand href="/" className="app-label">
+                &lt;img style={{ width: '90px', marginRight: '20px' }} src={require('./logo.png')} />
+            &lt;/Navbar.Brand>
+            &lt;Navbar.Toggle aria-controls="responsive-navbar-nav" />
+            &lt;Navbar.Collapse id="responsive-navbar-nav">
+                &lt;div className="storyboard-label">Storyboard UI&lt;/div>
+            &lt;/Navbar.Collapse>
+          &lt;/Navbar>
+        &lt;/div>
+        &lt;div className = 'mr-top-oth-box'>
+        {configPosKeys.map(key => {
+          let blocksStyles;
+          if (key == 1) {
+            blocksStyles = "custom-form-container mr-top-top-box"
+        } else{
+            blocksStyles = "custom-form-container mr-top-top-box"
+        }
+          let configObj = this.state.configJson[key]
+          return(
+          &lt;Accordion expanded={this.state.expanded &amp;&amp; key} className={blocksStyles} key= {key}>
+            &lt;AccordionSummary
+            expandIcon={&lt;ExpandMoreIcon/>}
+            aria-controls="panel1c-content"
+            id="panel1c-header"
+          >
+            
+            &lt;div style={{display: 'flex', width: '100%'}}>
+                  &lt;div style = {{flexGrow: '2'}}>
+                    &lt;Typography  className="main-form-label"  variant = 'h6'>{"Pos: " + (this.state.pos[key]?this.state.pos[key]:'NA') + " | " + "Layout: " + (this.state.layout[key]?this.state.layout[key]:'NA') + " | Chart: " + (this.state.chartType_val[key]?this.state.chartType_val[key]['label']:'NA')  }&lt;/Typography>
+                  &lt;/div>
+                  &lt;div>
+                  &lt;IconButton className="edit-del-form-btn" size='small' onClick = {() => this.copyEls(key)}>&lt;FileCopy />&lt;/IconButton>
+                  &lt;IconButton className="edit-del-form-btn" size = 'small' onClick = { () => this.delEls(key)}>&lt;Delete />&lt;/IconButton>
+                  &lt;/div>
+            &lt;/div>
+        &lt;/AccordionSummary>
+          &lt;Grid direction = 'column' style = {{marginBottom: '50px'}}>
+          {configObj.map((obj, k) => {
+            return(
+            &lt;React.Fragment>
+              &lt;Grid container direction = 'row'>
+              {obj.map((el, i) => {
+                if(el.inputType === 'select_input' || el.inputType === 'multi_select_input' ){
+                  let elOptions= el.options.sort(function(a,b){return compareStrings(a.label, b.label)})
+                }
+                
+                if((el.inputType === 'select_input' || el.inputType === 'overview') &amp;&amp; el.visibility &amp;&amp; this.state.configJson[key][el.visibility.pos[0]][el.visibility.pos[1]]){
+                  if(this.state.configJson[key][el.visibility.pos[0]][el.visibility.pos[1]]['selectedOption']){
+                    if( el.visibility.values.indexOf(this.state.configJson[key][el.visibility.pos[0]][el.visibility.pos[1]]['selectedOption']['value']) === -1){
+                      return null
+                    }
+                  }
+                }
+                
+                if(el.inputType === 'select_input') return (
+                  &lt;div tooltipLabel={el.tooltipText} className = 'custom-inp-fields custom-tooltip mr-left-right-5 form-input-custom-box mr-top-1' >
+                  &lt;SelectInput disabled={this.getDisabled(el, key)} id = {el.id} el_pos = {key} parent_pos = {k} pos = {i} options = {this.getSelectInputOptions(el, key)} label = {el.label} handleChange = {this.handleDropDownChange} selectedOption = {this.getSelectedOption(el, key)} />
+                  {el.isMandatory===false ? (&lt;FormHelperText>Optional&lt;/FormHelperText>) : null }
+                  &lt;/div>
+                )
+                if(el.inputType === 'para_input') return(
+                  &lt;div tooltipLabel={el.tooltipText} className="mr-left-right-15 mr-top-1">
+                    &lt;ParaInput state = {el.selectedOption===null?['']:el.selectedOption} label ={el.label} parent_pos ={k} id={el.id} el_pos={key} pos={i} handleChange={this.handleDropDownChange}>&lt;/ParaInput>
+                  &lt;/div>
+                )
+                if(el.inputType === 'overview') return (
+                  &lt;div tooltipLabel={el.tooltipText} style={{ height: '70px', marginLeft: '5px', width: '300px', marginTop: '2.05%' }} className="custom-tooltip">
+                    &lt;Overview label={el.label} isMandatory={el.isMandatory} helperText ={el.helperText?el.helperText:""}/>
+                  &lt;/div>
+                )  
+                if(el.inputType === 'api_input') return (
+                  &lt;div tooltipLabel={el.tooltipText}  className="custom-inp-fields custom-tooltip mr-left-right-15 mr-top-1">
+                    &lt;ApiInput filterSelectedOptions={el.filterSelectedOptions} dataset = {this.state.databases[key]} disabled={el.id ==='chart_functionality'?((this.state.chartType_val[key])?false:true):false} id = {el.id} el_pos = {key} parent_pos = {k} pos = {i} options = {el.options} label = {el.label} handleChange = {this.handleDropDownChange} selectedOption = {el.selectedOption} multiple = {false} />
+                    {el.isMandatory===false ? (&lt;FormHelperText>Optional&lt;/FormHelperText>) : null }
+                  &lt;/div>
+                )  
+                if(el.inputType === 'api_input_multiple') return (
+                  &lt;div tooltipLabel={el.tooltipText}  className="custom-inp-fields custom-tooltip mr-left-right-15 mr-top-1">
+                    &lt;ApiInput dataset = {this.state.databases[key]} filterSelectedOptions={el.filterSelectedOptions} disabled={el.id ==='chart_functionality'?(this.state.chartType_val[key]?false:true):false} id = {el.id} el_pos = {key} parent_pos = {k} pos = {i} options = {el.options} label = {el.label} handleChange = {this.handleDropDownChange} selectedOption = {(el.selectedOption)?el.selectedOption:[]} multiple = {true} />
+                    {el.isMandatory===false ? (&lt;FormHelperText>Optional&lt;/FormHelperText>) : null }
+                  &lt;/div>
+                )
+                if(el.inputType === 'multi_select_input') return (
+                  &lt;div tooltipLabel={el.tooltipText}  className="custom-inp-fields custom-tooltip mr-left-right-15 mr-top-1">
+                  &lt;SelectInput multiple = {true} id = {el.id} el_pos = {key} parent_pos = {k} pos = {i} filterSelectedOptions={el.filterSelectedOptions} options = {el.options} label = {el.label} handleChange = {this.handleDropDownChange} selectedOption={el.selectedOption?el.selectedOption:[]}/>
+                  {el.isMandatory===false ? (&lt;FormHelperText>Optional&lt;/FormHelperText>) : null }
+                  &lt;/div>
+                )  
+                if(el.inputType === 'text_input' || el.inputType === 'multi_input') return(
+                  &lt;div tooltipLabel={el.tooltipText}  className="custom-inp-fields custom-tooltip mr-left-right-15 mr-top-1">
+                    &lt;TextInput selectedOption = {el.selectedOption} id = {el.id} el_pos = {key} parent_pos = {k} pos = {i} label = {el.label} handleChange = {this.handleDropDownChange} />
+                    {el.isMandatory===false ? (&lt;FormHelperText>Optional&lt;/FormHelperText>) : null }
+                  &lt;/div>
+                )
+                if(el.inputType === 'radio_button_input') return(
+                  &lt;div tooltipLabel={el.tooltipText} className="custom-inp-fields custom-tooltip mr-left-right-15 mr-top-1">
+                    &lt;RadioButtonGroup label = {el.label} options = {el.options} selectedOption = {el.selectedOption} parent_pos = {k} id = {el.id} el_pos = {key} pos = {i} handleChange = {this.handleDropDownChange}/>
+                  &lt;/div>
+                )
+                if(el.inputType === 'text_area') return(
+                  &lt;div tooltipLabel={el.tooltipText} style={{margin: '1.05%'}}>
+                    &lt;TextArea disabled = {el.field === 'html_footer'?(this.state.pos[key] == 0 || this.state.pos[key] == -1)?true:false:false} label ={el.label} parent_pos = {k} id={el.id} el_pos={key} pos={i} handleChange={this.handleDropDownChange} selectedOption={el.selectedOption}/>
+                  &lt;/div>
+                )
+                if(el.inputType === 'modal') return(
+                  &lt;div tooltipLabel={el.tooltipText} style={{ height: '70px' }} className="mr-left-right-15 mr-top-1">
+                    &lt;Modal state = {el.state} handler = {this.handleModal} label ={el.label} parent_pos ={k} id={el.id} el_pos={key} pos={i} handleChange={this.handleDropDownChange} selectedOption = {el.selectedOption}/>
+                  &lt;/div>
+                )
+                if(el.inputType === 'kpi_card') return(
+                  &lt;div tooltipLabel={el.tooltipText}className="custom-tooltip mr-left-right-15 mr-top-1">
+                    &lt;KPICard handleChange={this.handleDropDownChange} parent_pos ={k} id={el.id} el_pos={key} pos={i} labels = {el.labels} values={el.values} selectedOption={el.selectedOption}/>
+                  &lt;/div>
+                )
+              })}
+              
+              &lt;/Grid>
+              &lt;ToastContainer position="bottom-center" />
+            &lt;/React.Fragment>
+            )
+          })
+          }
+        &lt;/Grid>
+        &lt;/Accordion>
+        )
+        })}
+        &lt;/div>
+      &lt;div className="forms-app-btn-container">
+      &lt;Button className="form-app-btns" variant='contained' onClick = {() => this.addEl()}>Add Element&lt;/Button>
+      &lt;Button className="form-app-btns" variant='contained' onClick = {async () => {
+        let submission = await this.sendConfigToBackend()
+        if(submission){
+          this.props.handleChange()
+        } else {
+          alert('Some error occured, please try again')
+        }
+        }}>Submit &amp;amp; Preview&lt;/Button>
+      &lt;Button className="form-app-btns" variant='contained' onClick = {async () => {
+      let submission = await this.saveCache()
+      if(submission){
+        // this.props.handleChange()
+        
+      } else {
+        alert('Some error occured, please try again')
+      }
+      }}>Save&lt;/Button>
+      &lt;/div>
+      &lt;/Grid>
+}
+      &lt;/React.Fragment>
+    )
+    }catch(e){
+      alert(e)
+    }
+  }
+}
+export default FormApp;
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="FormApp.html">FormApp</a></li><li><a href="module.exports.html">exports</a></li><li><a href="MultiPageFormApp.html">MultiPageFormApp</a></li><li><a href="RadioButtonsGroup.html">RadioButtonsGroup</a></li><li><a href="SelectInput.html">SelectInput</a></li><li><a href="TextInput.html">TextInput</a></li></ul><h3>Global</h3><ul><li><a href="global.html#compareStrings">compareStrings</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Fri Apr 30 2021 17:14:19 GMT+0530 (India Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
