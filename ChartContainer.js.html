@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: ChartContainer.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: ChartContainer.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>//Importing required libraries &amp; modules
+import React from "react";
+import { Grid } from "@material-ui/core";
+import * as Chart from "../../charts";
+import * as d3 from "d3";
+import styleJson from "../../styles/styles";
+import { makeStyles } from "@material-ui/core";
+import clsx from "clsx";
+import GetApiData from "./../../utils/getApiData";
+import "react-responsive-carousel/lib/styles/carousel.min.css";
+import { useSpring, animated } from "react-spring";
+import { InteractivityContainer } from "./../../container";
+import { FilterData } from "./../../components/Interactivity";
+import MakeAxis from "./../../utils/AxisInteractivity";
+import styleConfig from "./../../styles/root";
+import { Carousel } from "react-responsive-carousel";
+import StackBarModel from "./../../charts/models/StackBarChart";
+import ImageLoader from "react-load-image";
+import $ from "jquery";
+// importing underscore to use some basic operations
+const _ = require("underscore");
+
+//defining default chart height &amp; width
+const chartHeight = 700;
+const chartWidth = 900;
+
+// Render Chart component to render chart
+/**
+ * RenderChart Component to rnder charts
+ * @param {props} props props passed by chartcontainer
+ * Depending upon props render chart renders appropriate chart on screen
+ */
+const RenderChart = (props) => {
+  var params = props.config;
+  params =
+    params.length === 0 || params.length === undefined ? params : params[0];
+  var screenSize = useWindowSize();
+  const imageEntry = useSpring({
+    to: async (next, cancel) => {
+      await next({ opacity: 0.1 });
+      await next({ opacity: 0.6 });
+      await next({ opacity: 1 });
+    },
+    from: { opacity: 0 },
+  });
+  var strXAxisFormat = params.x_axis_format;
+  if (props.x_axis_format !== null) strXAxisFormat = props.x_axis_format;
+  var strYAxisFormat = params.y_axis_format;
+  if (props.y_axis_format !== null) strYAxisFormat = props.y_axis_format;
+  //animations
+  var chart_animations = styleConfig.animations.chart;
+  //Switch block for chart
+  //renders chart based on chart_type provided by user
+  //some charts clean their containers (legend &amp; chart containers) before starting
+
+  switch (params.chart_type) {
+    case "scatter_chart":
+      return (
+        &lt;Chart.BubbleChart
+          secondAxis={params.second_chart}
+          valueFormat={params.value_format}
+          valueLabel={params.value_label}
+          referenceLineLabel={params.reference_line_label}
+          configName={props.configName}
+          xaxisformat={strXAxisFormat}
+          yaxisformat={strYAxisFormat}
+          replaceVals={params.replacement}
+          animation={chart_animations}
+          isParent={true}
+          data={params.data}
+          is_bubble={false}
+          clickToFilter={params.clicktofilter}
+          children={params.clickchildren}
+          filterSource={params.filtersource}
+          x_label={params.x_axis_label}
+          y_label={params.y_axis_label}
+          referenceLineValue={params.reference_line_value}
+          referenceLineColor={params.reference_line_color}
+          pos={params.pos}
+          legendContainer={props.legendContainer}
+          height={props.height}
+          width={props.width}
+          selectedField={null}
+          selectedValue={null}
+          defined_colors={props.defined_color}
+          opacity={params.opacity}
+          zLowerLimit={props.zLowerLimit}
+          zUpperLimit={props.zUpperLimit}
+        />
+      );
+    case "packed_bubble_chart":
+      d3.select("#legend_container").selectAll("svg").remove();
+      d3.select("#legend_container").selectAll("canvas").remove();
+      return (
+        &lt;Chart.CirclePackedBubble
+          configName={props.configName}
+          animation={chart_animations}
+          isParent={true}
+          data={params.data}
+          pos={params.pos}
+          legendContainer={props.legendContainer}
+          height={props.height}
+          width={props.width}
+          defined_colors={props.defined_color}
+          valueFormat={params.value_format}
+          valueLabel={params.value_label}
+        />
+      );
+    case "network_chart":
+      d3.select("#legend_container").selectAll("svg").remove();
+      d3.select("#legend_container").selectAll("canvas").remove();
+      return (
+        &lt;Chart.NetworkChart
+          valueFormat={params.value_format}
+          valueLabel={params.value_label}
+          configName={props.configName}
+          animation={chart_animations}
+          isParent={true}
+          data={params.data}
+          pos={params.pos}
+          legendContainer={props.legendContainer}
+          height={props.height}
+          width={props.width}
+          defined_colors={props.defined_color}
+        />
+      );
+    case "bubble_chart":
+      return (
+        &lt;Chart.Bubble
+          valueFormat={params.value_format}
+          valueLabel={params.value_label}
+          children={params.clickchildren}
+          filterSource={params.filtersource}
+          replaceVals={params.replacement}
+          clickToFilter={params.clicktofilter}
+          attraction={params.attraction}
+          collide={params.collide}
+          alphaDecay={params.alphaDecay}
+          zLowerLimit={params.zLowerLimit}
+          zUpperLimit={params.zUpperLimit}
+          outterCircleRadius={params.outterCircleRadius}
+          configName={props.configName}
+          configName={props.configName}
+          xaxisformat={strXAxisFormat}
+          yaxisformat={strYAxisFormat}
+          animation={chart_animations}
+          isParent={true}
+          data={params.data}
+          is_bubble={true}
+          pos={params.pos}
+          legendContainer={props.legendContainer}
+          height={props.height}
+          width={props.width}
+          defined_colors={props.defined_color}
+          opacity={params.opacity}
+        />
+      );
+    case "stack_bar":
+      return (
+        &lt;Chart.StackBarChart
+          configName={props.configName}
+          xaxisformat={strXAxisFormat}
+          yaxisformat={strYAxisFormat}
+          animation={chart_animations}
+          replaceVals={params.replacement}
+          isParent={true}
+          data={params.data}
+          clickToFilter={params.clicktofilter}
+          children={params.clickchildren}
+          filterSource={params.filtersource}
+          x_label={params.x_axis_label}
+          y_label={params.y_axis_label}
+          referenceLineValue={params.reference_line_value}
+          referenceLineColor={params.reference_line_color}
+          referenceLineLabel={params.reference_line_label}
+          pos={params.pos}
+          legendContainer={props.legendContainer}
+          height={props.height}
+          width={props.width}
+          selectedField={null}
+          selectedValue={null}
+          defined_colors={props.defined_color}
+        />
+      );
+    case "group_bar":
+      return (
+        &lt;Chart.GroupBarChart
+          configName={props.configName}
+          xaxisformat={strXAxisFormat}
+          yaxisformat={strYAxisFormat}
+          animation={chart_animations}
+          replaceVals={params.replacement}
+          isParent={true}
+          data={params.data}
+          clickToFilter={params.clicktofilter}
+          children={params.clickchildren}
+          filterSource={params.filtersource}
+          x_label={params.x_axis_label}
+          y_label={params.y_axis_label}
+          referenceLineValue={params.reference_line_value}
+          referenceLineColor={params.reference_line_color}
+          pos={params.pos}
+          legendContainer={props.legendContainer}
+          height={props.height}
+          width={props.width}
+          selectedField={null}
+          selectedValue={null}
+          defined_colors={props.defined_color}
+        />
+      );
+    case "choropleth_chart":
+      return (
+        &lt;Chart.ChoroplethChart
+          d3ColorScheme={params.d3colorscheme}
+          valueFormat={params.value_format}
+          valueLabel={params.value_label}
+          replaceVals={params.replacement}
+          hideTooltipBottomValue={params.color}
+          configName={props.configName}
+          xaxisformat={strXAxisFormat}
+          yaxisformat={strYAxisFormat}
+          animation={chart_animations}
+          isParent={true}
+          data={params.data}
+          legendRange={params.legend_range}
+          x_label={params.x_axis_label}
+          y_label={params.y_axis_label}
+          clickToFilter={params.clicktofilter}
+          children={params.clickchildren}
+          filterSource={params.filtersource}
+          pos={params.pos}
+          referenceLineValue={params.reference_line_value}
+          referenceLineColor={params.reference_line_color}
+          legendContainer={props.legendContainer}
+          height={props.height}
+          width={props.width}
+          selectedField={null}
+          selectedValue={null}
+          defined_colors={props.defined_color}
+        />
+      );
+    case "stack_bar_hor":
+      return (
+        &lt;Chart.HorizontalStackBarChart
+          replaceVals={params.replacement}
+          configName={props.configName}
+          xaxisformat={strXAxisFormat}
+          yaxisformat={strYAxisFormat}
+          animation={chart_animations}
+          isParent={true}
+          data={params.data}
+          clickToFilter={params.clicktofilter}
+          children={params.clickchildren}
+          filterSource={params.filtersource}
+          x_label={params.x_axis_label}
+          y_label={params.y_axis_label}
+          pos={params.pos}
+          legendContainer={props.legendContainer}
+          height={props.height}
+          width={props.width}
+          defined_colors={props.defined_color}
+        />
+      );
+    case "sunburst":
+      d3.select("#legend_container").selectAll("svg").remove();
+      d3.select("#legend_container").selectAll("canvas").remove();
+      return (
+        &lt;Chart.SunBurst
+          valueLabel={params.value_label}
+          configName={props.configName}
+          xaxisformat={strXAxisFormat}
+          yaxisformat={strYAxisFormat}
+          animation={chart_animations}
+          data={params.data}
+          height={props.height}
+          width={props.width}
+          pos={params.pos}
+          legendContainer={props.legendContainer}
+          defined_colors={props.defined_color}
+          value_format={params.value_format}
+        />
+      );
+    case "line_chart":
+      return (
+        &lt;Chart.LineChart
+          secondAxis={params.second_chart}
+          referenceLineLabel={params.reference_line_label}
+          configName={props.configName}
+          xaxisformat={strXAxisFormat}
+          yaxisformat={strYAxisFormat}
+          animation={chart_animations}
+          replaceVals={params.replacement}
+          isParent={true}
+          data={params.data}
+          x_label={params.x_axis_label}
+          y_label={params.y_axis_label}
+          clickToFilter={params.clicktofilter}
+          children={params.clickchildren}
+          filterSource={params.filtersource}
+          pos={params.pos}
+          referenceLineValue={params.reference_line_value}
+          referenceLineColor={params.reference_line_color}
+          legendContainer={props.legendContainer}
+          height={props.height}
+          width={props.width}
+          selectedField={null}
+          selectedValue={null}
+          defined_colors={props.defined_color}
+        />
+      );
+    case "interval_line_chart":
+      return (
+        &lt;Chart.IntervalLineChart
+          secondAxis={params.second_chart}
+          replaceVals={params.replacement}
+          referenceLineLabel={params.reference_line_label}
+          configName={props.configName}
+          xaxisformat={strXAxisFormat}
+          yaxisformat={strYAxisFormat}
+          animation={chart_animations}
+          isParent={true}
+          data={params.data}
+          x_label={params.x_axis_label}
+          y_label={params.y_axis_label}
+          clickToFilter={params.clicktofilter}
+          children={params.clickchildren}
+          filterSource={params.filtersource}
+          pos={params.pos}
+          referenceLineValue={params.reference_line_value}
+          referenceLineColor={params.reference_line_color}
+          legendContainer={props.legendContainer}
+          height={props.height}
+          width={props.width}
+          selectedField={null}
+          selectedValue={null}
+          defined_colors={props.defined_color}
+        />
+      );
+    case "heat_map":
+      d3.select("#legend_container").selectAll("svg").remove();
+      return (
+        &lt;Chart.HeatChart
+          show_label = {params.show_label}
+          d3ColorScheme={params.d3colorscheme}
+          valueFormat={params.value_format}
+          valueLabel={params.value_label}
+          configName={props.configName}
+          xaxisformat={strXAxisFormat}
+          yaxisformat={strYAxisFormat}
+          legendRange={params.legend_range}
+          animation={chart_animations}
+          data={params.data}
+          x_label={params.x_axis_label}
+          y_label={params.y_axis_label}
+          pos={params.pos}
+          legendContainer={props.legendContainer}
+          height={props.height}
+          width={props.width}
+          selectedField={null}
+          selectedValue={null}
+          defined_colors={props.defined_color}
+        />
+      );
+    case "sankey":
+      d3.select("#legend_container").selectAll("svg").remove();
+      d3.select("#legend_container").selectAll("canvas").remove();
+      return (
+        &lt;Chart.SankeyChart
+          valueFormat={params.value_format}
+          valueLabel={params.value_label}
+          configName={props.configName}
+          xaxisformat={strXAxisFormat}
+          yaxisformat={strYAxisFormat}
+          animation={chart_animations}
+          isParent={true}
+          dvar={params.data}
+          x_label={params.x_axis_label}
+          y_label={params.y_axis_label}
+          height={props.height}
+          width={props.width}
+          pos={params.pos}
+          legendContainer={props.legendContainer}
+          defined_colors={props.defined_color}
+        />
+      );
+    case "funnel_chart":
+      d3.select("#legend_container").selectAll("svg").remove();
+      d3.select("#legend_container").selectAll("canvas").remove();
+      d3.select("#chart-container").selectAll("svg").remove();
+      return (
+        &lt;Chart.Funnel
+          configName={props.configName}
+          xaxisformat={strXAxisFormat}
+          yaxisformat={strYAxisFormat}
+          animation={chart_animations}
+          data={params.data}
+          valueFormat={params.value_format}
+          valueLabel={params.value_label}
+          x_label={params.x_axis_label}
+          y_label={params.y_axis_label}
+          height={props.height}
+          width={props.width}
+          pos={params.pos}
+          legendContainer={props.legendContainer}
+          defined_colors={props.defined_color}
+        />
+      );
+    case "decision_tree":
+      d3.select("#legend_container").selectAll("svg").remove();
+      return (
+        &lt;Chart.DecisionTree
+          configName={props.configName}
+          xaxisformat={strXAxisFormat}
+          yaxisformat={strYAxisFormat}
+          animation={chart_animations}
+          data={params.data}
+          x_label={params.x_axis_label}
+          y_label={params.y_axis_label}
+          height={props.height}
+          width={props.width}
+          pos={params.pos}
+          legendContainer={props.legendContainer}
+          defined_colors={props.defined_color}
+        />
+      );
+    case "bubble_map":
+      return (
+        &lt;Chart.BubbleMap
+          configName={props.configName}
+          xaxisformat={strXAxisFormat}
+          yaxisformat={strYAxisFormat}
+          animation={chart_animations}
+          isParent={true}
+          data={params.data}
+          is_bubble={false}
+          clickToFilter={params.clicktofilter}
+          children={params.clickchildren}
+          filterSource={params.filtersource}
+          x_label={params.x_axis_label}
+          y_label={params.y_axis_label}
+          value_label={params.value_label}
+          value_format={params.value_format}
+          referenceLineValue={params.reference_line_value}
+          referenceLineColor={params.reference_line_color}
+          pos={params.pos}
+          legendContainer={props.legendContainer}
+          height={props.height}
+          width={props.width}
+          selectedField={null}
+          selectedValue={null}
+          defined_colors={props.defined_color}
+        />
+      );
+    case "illu_image":
+      d3.select("#legend_container").selectAll("svg").remove();
+      d3.select("#chart-container").selectAll("svg").remove();
+      d3.selectAll(".new_tooltip").style("opacity", 0);
+      return (
+        &lt;animated.img
+          src={
+            process.env.REACT_APP_MODE === "dev"
+              ? "http://127.0.0.1:4005/fetch_image/" + params.img_name
+              : window.getWebAppBackendUrl("/fetch_image/" + params.img_name)
+          }
+          style={{
+            imageEntry,
+            display: "block",
+            marginLeft: "auto",
+            marginRight: "auto",
+            maxHeight: (params.layout === 'center-top' || params.layout === 'center-bottom' || params.chart_functionality !== 'Parent')?"65%":"600px",
+            maxWidth:
+              (params.layout === "center-top" ||
+              params.layout === "center-bottom" || params.chart_functionality !== 'Parent')
+                ? "70%"
+                : "95%",
+          }}
+          width="auto"
+        >&lt;/animated.img>
+      );
+    case "multi_image":
+      d3.select("#chart-container").selectAll("svg").remove();
+      d3.selectAll(".new_tooltip").style("opacity", 0);
+      return (
+        &lt;div className = {params.layout}>
+          &lt;Carousel dynamicHeight={false} autoPlay showArrows={true} style={{marginRight: 'auto', marginLeft: 'auto', maxHeight: "75%", maxWidth: "75%"}}>
+            {params.img_name.map((img) => {
+              return (
+                &lt;div>
+                  &lt;img
+                    src={
+                      process.env.REACT_APP_MODE === "dev"
+                        ? "http://127.0.0.1:4005/fetch_image/" + img
+                        : window.getWebAppBackendUrl("/fetch_image/" + img)
+                    }
+                    width={"auto"}
+                    style={{ imageEntry, maxWidth: "85%",  marginLeft: 'auto', marginRight: 'auto' }}
+                  >&lt;/img>
+                &lt;/div>
+              );
+            })}
+          &lt;/Carousel>
+          &lt;/div>
+      );
+    case "tree_chart":
+      d3.select("#legend_container").selectAll("svg").remove();
+      d3.select("#legend_container").selectAll("canvas").remove();
+      return (
+        &lt;Chart.TreeChart
+          valueFormat={params.value_format}
+          valueLabel={params.value_label}
+          configName={props.configName}
+          animation={chart_animations}
+          defined_colors={props.defined_color}
+          isParent={true}
+          data={params.data}
+          pos={params.pos}
+          legendContainer={props.legendContainer}
+          height={props.height}
+          width={props.width}
+        />
+      );
+    case "video":
+      d3.select("#legend_container").selectAll("svg").remove();
+      d3.select("#chart-container").selectAll("svg").remove();
+      d3.selectAll(".new_tooltip").style("opacity", 0);
+      return (
+        &lt;video
+          controls
+          height={params.layout === 'no-text'?screenSize.height*0.85:screenSize.height * 0.55}
+          preload="auto"
+          style={{
+            display: "block",
+            maxHeight: '95%',
+            maxWidth: '95%',
+            marginLeft:
+              params.layout === "center-top" ||
+              params.layout === "center-bottom"
+                ? "auto"
+                : "auto",
+            marginRight: "auto"
+          }}
+        >
+          &lt;source
+            src={
+              process.env.REACT_APP_MODE === "dev"
+                ? "http://127.0.0.1:4005/fetch_image/" + params.img_name
+                : window.getWebAppBackendUrl("/fetch_image/" + params.img_name)
+            }
+            type="video/mp4"
+          />
+          Your browser does not seem to support this video
+        &lt;/video>
+      );
+    case "sequences_sunburst":
+      d3.select("#chart-container").select("svg").remove();
+      return (
+        &lt;Chart.SequencesSunburst
+          props={params}
+          defined_colors={props.defined_color}
+          legendContainer={props.legendContainer}
+        />
+      );
+    case "density_chart":
+      d3.select("#chart-container").selectAll("svg").remove();
+      return (
+        &lt;Chart.D3DensityChart
+          height={props.height}
+          props={params}
+          isParent={true}
+          width={props.width}
+          defined_colors={props.defined_color}
+          legendContainer={props.legendContainer}
+          configName={props.configName}
+        />
+      );
+    case "ext_page":
+      d3.select("#chart-container").selectAll("svg").remove();
+      return (
+        &lt;iframe
+          id="i_frame"
+          src={params.srcUrl}
+          width="98%"
+          height={props.height}
+          marginHeight='0'
+          marginWidth='0'
+          scrolling = 'auto'
+          onLoad={onIframeLoad(params.divIDs, params.classNames, params.classSeq, params.ifDSS)}
+          frameBorder = {0}
+        />
+      );
+    case "value_chain":
+      d3.select("#chart-container").selectAll("svg").remove();
+      // d3.selectAll('svg').remove()
+      return (
+        &lt;div style={{marginLeft: params.layout !== 'left-text'?'5vh': 0}}>
+          &lt;Chart.ValueBoxChain props={params} width = {props.width}/>
+        &lt;/div>
+      );
+      // return &lt;div>&lt;/div>
+    case "upset_chart":
+      d3.select("#chart-container").select("svg").remove();
+      return &lt;Chart.Upset width ={props.width*0.85} height={props.height*0.90} props={params} />;
+    case "stack_value_combo":
+      d3.select("#chart-container").selectAll("svg").remove();
+      $("#interactivity_plus_legend").height(0);
+      return (
+        &lt;React.Fragment>
+          &lt;Chart.ValueBoxChain props={params.valueChain} width = {props.width}/>
+          &lt;div id="real_chart_container">&lt;/div>
+          &lt;Chart.HorizontalStackBarChart
+            chartContainer={"#real_chart_container"}
+            configName={props.configName}
+            xaxisformat={strXAxisFormat}
+            yaxisformat={strYAxisFormat}
+            animation={chart_animations}
+            isParent={true}
+            data={params.data}
+            clickToFilter={params.clicktofilter}
+            children={params.clickchildren}
+            filterSource={params.filtersource}
+            x_label={params.x_axis_label}
+            y_label={params.y_axis_label}
+            pos={params.pos}
+            legendContainer={props.legendContainer}
+            height={props.height*0.85}
+            width={props.width}
+            defined_colors={props.defined_color}
+          />
+        &lt;/React.Fragment>
+      );
+    default:
+      d3.select("#chart-container").selectAll("svg").remove();
+      return null;
+  }
+};
+
+/**
+ * function to manipulate html in iframe
+ * @param {array} divIDs array of IDs of the divs to be hidden
+ * @param {array} classNames array of classNames to be hidden
+ * @param {array} classSeq sequence of the elements of the classes to be hidden
+ * @param {boolean} ifDSS Boolean to track whether link is DSS
+ */
+const manipulateHTML = (divIDs, classNames, classSeq, ifDSS) => {
+  
+  let iframeLoader = window.setInterval(function () {
+    let iframe = document.getElementsByTagName('iframe')[0];
+    divIDs.map((id) => {
+      let els = iframe.contentWindow.document.getElementById(id);
+      if (els) {
+        els.style.visibility = "hidden";
+        // clearInterval(iframeLoader);
+      }
+    })
+
+    classNames.map((cls, i) =>{
+      let elems = iframe.contentWindow.document.getElementsByClassName(cls);
+      if(elems[classSeq[i]]){
+        elems[classSeq[i]].style.visibility = 'hidden';
+      }
+    })
+
+    if(ifDSS){
+      iframe.contentWindow.document.getElementById('root-dom-element').style.background = '#f3f7f8'
+    }
+  }, 1000);
+
+  setTimeout(function(){
+    clearInterval(iframeLoader)
+  }, 45000)
+};
+
+/**
+ * Function to call manipulateHTML on iframeload
+ */
+function onIframeLoad(divIDs, classNames, classSeq, ifDSS) {
+    manipulateHTML(divIDs, classNames, classSeq, ifDSS);
+}
+
+/**
+ * funciton to fetch window height or width
+ */
+function useWindowSize() {
+  const isClient = typeof window === "object";
+  return {
+    width: isClient ? window.innerWidth : undefined,
+    height: isClient ? window.innerHeight : undefined,
+  };
+}
+
+/**
+ * ChartContainer component for charts 
+ * @component
+ * @property {string} selectedChart Variable to keep track of selected chart in case of toggle charts on screen. parent by default
+ * @property {string} columnFilterValue Variable to keep track of selected value in case of filter by lod. First value is considered, if null
+ * @property {string} xAxis Variable to keep track of selected value in case of dynamic xAxis. First value is considered, if null
+ * @property {string} xAxis Variable to keep track of selected value in case of dynamic yAxis. First value is considered, if null
+ * @property {callback} screenSize to track window width &amp; height
+ */
+class ChartContainer extends React.Component {
+  //defining state
+  constructor(props) {
+    super(props);
+    this.state = {
+      selectedChart: "parent", //Keeps track of chart being displayed. Default == parent &amp; will only change through user interactivity
+      columnFilterValue: null, //to keep track of column filter value. Default is 'all' &amp; will not require any sort of filtering
+      xAxis: null,
+      yAxis: null,
+      screenSize: useWindowSize(),
+    };
+    this.chartContainer = React.createRef();
+    this.ChartContainerWidth = null;
+    this.ChartContainerHeight = null;
+  }
+
+ /**
+  * function to update window dimensions if screen/window changes
+  */
+  updateWindowDimension = () => {
+    this.setState({
+      screenSize: useWindowSize(),
+    });
+  };
+
+  /**
+   * For interactivity [changes chart from parent to others]. In case of toggle charts
+   * @param {json} selectedOption selected option 
+   */
+  handleSelectInputChange = (selectedOption) => {
+    this.setState({
+      selectedChart: selectedOption.value,
+      columnFilterValue: null,
+      xAxis: null,
+      yAxis: null,
+    });
+  };
+
+  /**
+   * Funciton to handle filter by lod
+   * @param {json} selectedOption 
+   */
+  handleFilterOnColumn = (selectedOption) => {
+    this.setState({
+      columnFilterValue: selectedOption.value,
+    });
+  };
+
+  /**
+   * Funciton to handle dynamic y axis
+   * @param {json} selectedOption 
+   */
+  handleXAxis = (selectedOption) => {
+    this.setState({
+      xAxis: selectedOption.value,
+    });
+  };
+
+  
+  /**
+   * Funciton to handle dynamic y axis
+   * @param {json} selectedOption 
+   */
+  handleYAxis = (selectedOption) => {
+    this.setState({
+      yAxis: selectedOption.value,
+    });
+  };
+/**
+ * To change everything to default once component recieves new props
+ */
+  componentWillReceiveProps() {
+    var layoutConfig = this.props.layoutConfig;
+    var params = JSON.parse(
+      JSON.stringify(
+        layoutConfig.filter((el, i) => {
+          return el.pos === this.props.visibleItem;
+        })
+      )
+    );
+    params = params.length !== 0 ? params[0] : params;
+    this.setState({
+      selectedChart: "parent",
+      columnFilterValue: null,
+      xAxis: null,
+      yAxis: null,
+    });
+  }
+
+  /**
+   * 1. Get data of current position chart \n
+   * 2. update window dimensions
+   * 3. Attach function to update window dimensions if it changes
+   * 4. Set filter by lod to default 
+   */
+  componentDidMount() {
+    var layoutConfig = this.props.layoutConfig;
+    var params = JSON.parse(
+      JSON.stringify(
+        layoutConfig.filter((el, i) => {
+          return el.pos === this.props.visibleItem;
+        })
+      )
+    );
+    params = params.length !== 0 ? params[0] : params;
+    this.updateWindowDimension();
+    window.addEventListener("resize", this.updateWindowDimension);
+    this.setState({
+      columnFilterValue: null,
+    });
+  }
+/**
+ * 1. Get params of current chart
+ * 2. Set filter by lod to default
+ */
+  async componentWillMount() {
+    var layoutConfig = this.props.layoutConfig;
+    var params = JSON.parse(
+      JSON.stringify(
+        layoutConfig.filter((el, i) => {
+          return el.pos === this.props.visibleItem;
+        })
+      )
+    );
+    params = params.length !== 0 ? params[0] : params;
+    this.setState({
+      columnFilterValue: null,
+    });
+  }
+
+  /** Attach window resize listener */
+  componentWillUnmount() {
+    window.removeEventListener("resize", this.updateWindowDimension);
+  }
+
+  /**
+   * Renders charts based on various scenarios. 
+   * Scenarios can be chart type and interactivities. 
+   * Chart type controls the height &amp; width
+   * Interactivities control the data
+   */
+  render() {
+    //data cleaning
+    var layoutConfig = this.props.layoutConfig;
+    var params = JSON.parse(
+      JSON.stringify(
+        layoutConfig.filter((el, i) => {
+          return el.pos === this.props.visibleItem;
+        })
+      )
+    );
+    var config = JSON.parse(JSON.stringify(params));
+    params = params.length !== 0 ? params[0] : params;
+    const options = [{ value: "parent", label: params.title }];
+    //interactivity enabler: creates dropdown for childern capability
+    for (var key in params.children) {
+      if (params.children.hasOwnProperty(key)) {
+        options.push({ value: "" + key, label: "" + key });
+      }
+    }
+
+    const filterOptions = [];
+    //Setting data as per state of the app
+    if (this.state.selectedChart !== "parent") {
+      config = params.children[this.state.selectedChart];
+    }
+
+    //checking for filter column interactivity:: if this.state.columnFilterValue !== all then we need to filter data
+    var columnFilterValue = null;
+    
+    if (params.filtercolumn &amp;&amp; this.state.selectedChart === "parent") {
+      var filterValues = params.filtervalues.sort();
+      filterValues.map((val) => {
+        filterOptions.push({ value: "" + val, label: "" + val });
+      });
+      if (this.state.columnFilterValue === null)
+        columnFilterValue = filterValues[0];
+      else columnFilterValue = this.state.columnFilterValue;
+    }
+    config = FilterData(
+      JSON.parse(JSON.stringify(config)),
+      params.filtercolumn,
+      columnFilterValue
+    );
+
+    //making xAxis &amp; yAxis filters
+    var xAxisOptions = [],
+      yAxisOptions = [];
+    var xAxisFormat = null,
+      yAxisFormat = null;
+    if (
+      params.x_axis_values &amp;&amp;
+      params.y_axis_values &amp;&amp;
+      this.state.selectedChart === "parent"
+    ) {
+      var xAxis, yAxis;
+      //making values to fill into the filters
+      params.x_axis_values.sort().map((val) => {
+        xAxisOptions.push({ value: "" + val, label: "" + val });
+      });
+      yAxis = params.y_axis_values.sort().map((val) => {
+        yAxisOptions.push({ value: "" + val, label: "" + val });
+      });
+      if (this.state.xAxis === null) {
+        xAxis = xAxisOptions[0].value;
+      } else {
+        xAxis = this.state.xAxis;
+      }
+      if (this.state.yAxis === null) {
+        yAxis = yAxisOptions[0].value;
+      } else {
+        yAxis = this.state.yAxis;
+      }
+      config[0].x_axis_label = xAxis;
+      config[0].y_axis_label = yAxis;
+      
+      config = MakeAxis(JSON.parse(JSON.stringify(config)), xAxis, yAxis);
+      if (xAxis !== null &amp;&amp; config[0]["x_axis_format"])
+        xAxisFormat = config[0]["x_axis_format"][xAxis];
+      if (yAxis !== null &amp;&amp; config[0]["y_axis_format"])
+        yAxisFormat = config[0]["y_axis_format"][yAxis];
+    }
+
+    var chartHeight = this.state.screenSize.height * 0.8;
+    var chartWidth = this.state.screenSize.width * 0.56;
+    var leftChartPos, superContainerWidth;
+    if (params.chart_type === "sunburst") {
+      chartHeight = this.state.screenSize.height * 0.8;
+    } else if (params.chart_type === "sankey") {
+      chartHeight = this.state.screenSize.height * 0.8;
+    }
+
+    if (params.layout === "center-top") {
+      chartHeight = this.state.screenSize.height * 0.6;
+    }
+
+    if (params.layout === "center-bottom") {
+      chartHeight = this.state.screenSize.height * 0.55;
+    }
+
+    if (params.chart_type === "sunburst") {
+      chartWidth = this.state.screenSize.width * 0.47;
+    }
+
+    if (params.chart_type === "stack_value_combo") {
+      var chartHeight = this.state.screenSize.height * 0.6;
+    }
+
+    if (params.pos === 0 || params.pos === -1) {
+      chartWidth = this.state.screenSize.width * 0.46;
+    }
+
+    if (params.pos === 0 || params.pos === -1) {
+      leftChartPos = "50%";
+    } else {
+      leftChartPos = params.layout === "left-text" ? "40%" : "0";
+    }
+
+    if (params.pos === 0 || params.pos === -1) {
+      superContainerWidth = "46%";
+    } else {
+      superContainerWidth =
+        params.layout === "center-top" || params.layout === "center-bottom"
+          ? "100%"
+          : "56%";
+    }
+    var legendContainer;
+    if (params.layout === "center-bottom" || params.layout === "center-top") {
+      legendContainer = "legend_container";
+    } else {
+      legendContainer = "legend_container_" + this.props.visibleItem;
+    }
+
+    if(params.layout === 'no-text'){
+      superContainerWidth = '100%'
+      chartHeight = this.state.screenSize.height*0.9
+      chartWidth = this.state.screenSize.width*0.70
+      if(params.chart_type === 'ext_page'){
+        chartWidth = this.state.screenSize.width
+      }
+    }
+
+
+    return (
+      //container for chart, interactivity &amp; legends
+      //changes properties base on layout provided by user to the currently visible item
+      &lt;Grid
+        container
+        xs={12}
+        direction="row"
+        id="super-container"
+        style={{
+          position: "fixed",
+          top:
+            (params.layout !== "center-top" &amp;&amp; params.layout !== "center-bottom")
+              ? (params.layout === 'no-text')?"1vh":"9vh"
+              : params.layout === "center-bottom"
+              ? "4vh"
+              : "5vh",
+          left: leftChartPos,
+          width: superContainerWidth,
+          marginLeft:
+            params.layout === "right-text" 
+              ? "5vh"
+              : "0",
+          marginTop: params.layout === "center-top" ? "21vh" : "0",
+          marginBottom: params.layout === "center-bottom" ? "60vh" : "0",
+          zIndex: 1,
+        }}
+      >
+        {/* Layout for layouts other than legends_align === bottom.
+          In case of legend_align === bottom, the container follows a column direction meanwhile for others, it follows row direction*/}
+        {
+          // Changing direction for text alignments
+          &lt;Grid
+            container
+            direction={params.layout === "right-text" ? "row-reverse" : "row"}
+          >
+            {/* Adding an empty grid in case of right-text for better visibility [did not use margin as it is more reliable] */}
+            {/* {params.layout ==='right-text' &amp;&amp; &lt;Grid xs={1} style ={{right:0, height:'10%', maxHeight: screenSize.height*0.6, padding: '2%', overflowY:'auto'}}>&lt;/Grid>} */}
+            &lt;Grid
+              item
+              direction="row"
+              xs={
+                params.layout === "center-top" ||
+                params.layout === "center-bottom"
+                  ? 12
+                  : 12
+              }
+              style={{
+                marginLeft:
+                  params.chart_type === "illu_image" &amp;&amp;
+                  (params.layout === "center-top" ||
+                    params.layout === "center-bottom")
+                    ? ""
+                    : "0",
+              }}
+            >
+              {/* Container for interactivity &amp; chart. interactivity will always be on top */}
+              &lt;Grid
+                xs={
+                  params.layout === "center-top" ||
+                  params.layout === "center-bottom"
+                    ? 12
+                    : 12
+                }
+                item
+                direction="column"
+                style={{
+                  marginLeft: params.layout === "right-text" ? "0" : "0",
+                }}
+              >
+                {/* checking interactivity requirements &amp; rendering components conditionally*/}
+                &lt;Grid
+                  container
+                  direction={"row"}
+                  id="interactivity_plus_legend"
+                  style={{
+                    display: "flex",
+                    height:
+                     ( params.pos === 0 || params.chart_type === 'ext_page')
+                        ? 0
+                        : "7vh",
+                    marginLeft: params.layout !== 'left-text'? "5vh": "0"
+                  }}
+                >
+                  {/* &lt;div item id={'legend_container'} style={{ height: (params.chart_type === 'illu_image' || params.pos === 0 || params.if_end) ? 0 : '6vh', marginTop: 'auto', marginBottom: 'auto', maxHeight: '6vh', overflow: 'auto' }}>&lt;/div> */}
+                  {params.x_axis_values &amp;&amp;
+                    params.y_axis_values &amp;&amp;
+                    this.state.selectedChart === "parent" &amp;&amp; (
+                      &lt;div style={{ flexGrow: 2, display: "flex" }}>
+                        {xAxisOptions.length > 1 &amp;&amp; (
+                          &lt;Grid item xs={6}>
+                            {/* Rendering selectInput for interactivity. Creating a div for label &amp; then passing that label to &lt;Select> component*/}
+                            &lt;InteractivityContainer
+                              pos={params.pos}
+                              isRadio={
+                                params.button_or_dropdown === "button"
+                                  ? true
+                                  : false
+                              }
+                              hasValue={false}
+                              options={xAxisOptions}
+                              handleChange={this.handleXAxis}
+                              label={"Select X-Axis"}
+                            />
+                          &lt;/Grid>
+                        )}
+                        {yAxisOptions.length > 1 &amp;&amp; (
+                          &lt;Grid item xs={6}>
+                            &lt;InteractivityContainer
+                              pos={params.pos}
+                              isRadio={
+                                params.button_or_dropdown === "button"
+                                  ? true
+                                  : false
+                              }
+                              options={yAxisOptions}
+                              handleChange={this.handleYAxis}
+                              label={"Select Y-Axis"}
+                            />
+                          &lt;/Grid>
+                        )}
+                      &lt;/div>
+                    )}
+                  {/* Checking if the chart as any children components &amp; rendering SelectInput conditionally */}
+                  {params.hasOwnProperty("children") &amp;&amp;
+                    Object.keys(params.children).length !== 0 &amp;&amp; (
+                      &lt;div style={{ flexGrow: 2 }}>
+                        &lt;div item xs={6}>
+                          {/* &lt;div id = 'children-change-option-lable' style={{fontSize: '18px'}}>Select Children&lt;/div> */}
+                          {/* &lt;Select width ='200' aria-labelledby = {'children-change-option-lable'} options={options} onChange = {this.handleSelectInputChange} /> */}
+                          &lt;InteractivityContainer
+                            pos={params.pos}
+                            isRadio={
+                              params.button_or_dropdown === "button"
+                                ? true
+                                : false
+                            }
+                            options={options}
+                            handleChange={this.handleSelectInputChange}
+                            label={
+                              params.button_or_dropdown === "button"
+                                ? ""
+                                : "Select to toggle charts"
+                            }
+                          />
+                        &lt;/div>
+                      &lt;/div>
+                    )}
+                  {params.filtercolumn &amp;&amp;
+                    this.state.selectedChart === "parent" &amp;&amp; (
+                      &lt;div style={{ flexGrow: 2 }}>
+                        &lt;div item xs={6}>
+                          &lt;InteractivityContainer
+                            pos={params.pos}
+                            isRadio={
+                              params.button_or_dropdown === "button"
+                                ? true
+                                : false
+                            }
+                            options={filterOptions}
+                            label={
+                              params.button_or_dropdown === "button"
+                                ? ""
+                                : "Filter chart"
+                            }
+                            handleChange={this.handleFilterOnColumn}
+                          />
+                        &lt;/div>
+                      &lt;/div>
+                    )}
+                &lt;/Grid>
+                {/* Creating container for charts &amp; calling RenderChart*/}
+                &lt;Grid 
+                container 
+                direction = 'row'
+                xs={12}>
+                &lt;Grid
+                  item
+                  id="chart-container"
+                  // ref={this.chartContainer}
+                  xs={((params.layout === 'no-text'|| params.layout === 'center-top' || params.layout === 'center-bottom') &amp;&amp; (params.chart_type !== 'ext_page' &amp;&amp; params.chart_type !== 'video' &amp;&amp; params.chart_type !== 'illu_image' &amp;&amp; params.chart_type !== 'value_chain' &amp;&amp; params.chart_type !== 'multi_image'))?7:12}
+                  direction="row"
+                  alignItems='center'
+                  justify ='center'
+                >
+                  &lt;RenderChart
+                    x_axis_format={xAxisFormat}
+                    y_axis_format={yAxisFormat}
+                    configName={this.props.configName}
+                    config={config}
+                    height={chartHeight}
+                    width={chartWidth}
+                    legendContainer={legendContainer}
+                    defined_color={this.props.defined_color}
+                  />
+                &lt;/Grid>
+                &lt;Grid xs = {5} item>
+                {((params.layout==='center-top' || params.layout==='center-bottom' ) &amp;&amp; (params.chart_type !== 'ext_page' &amp;&amp; params.chart_type !== 'video' &amp;&amp; params.chart_type !== 'illu_image' &amp;&amp; params.chart_type !== 'value_chain' &amp;&amp; params.chart_type !== 'multi_image')) &amp;&amp; &lt;div style ={{marginTop: '4%'}} id = 'legend_container'>&lt;/div>}
+                &lt;/Grid>
+                {((params.layout === 'no-text') &amp;&amp; (params.chart_type !== 'ext_page' &amp;&amp; params.chart_type !== 'video' &amp;&amp; params.chart_type !== 'illu_image' &amp;&amp; params.chart_type !== 'value_chain' &amp;&amp; params.chart_type !== 'multi_image')) &amp;&amp; &lt;Grid xs = {3} id = {'legend_container_' + params.pos}>&lt;/Grid>}
+                &lt;/Grid>
+              &lt;/Grid>
+            &lt;/Grid>
+           
+            {/* {((params.layout === "center-top" ||
+              params.layout === "center-bottom") &amp;&amp; (params.chart_type !== 'ext_page' &amp;&amp; params.chart_type !== 'video' &amp;&amp; params.chart_type !== 'illu_image' 
+              &amp;&amp; params.chart_type !== 'value_chain' &amp;&amp; params.chart_type !== 'multi_image')) &amp;&amp; (
+              &lt;Grid
+                xs={params.layout === "right-text" ? 3 : 3}
+                id={"legend_container"}
+                style={{
+                  right: 0,
+                  height: "fill-content",
+                  maxHeight: "80%",
+                  overflowY: "auto",
+                }}
+              >&lt;/Grid>
+            )} */}
+          &lt;/Grid>
+        }
+      &lt;/Grid>
+    );
+  }
+}
+
+export default ChartContainer;
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="ChartContainer.html">ChartContainer</a></li></ul><h3>Global</h3><ul><li><a href="global.html#manipulateHTML">manipulateHTML</a></li><li><a href="global.html#onIframeLoad">onIframeLoad</a></li><li><a href="global.html#RenderChart">RenderChart</a></li><li><a href="global.html#useWindowSize">useWindowSize</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Mon May 03 2021 20:44:13 GMT+0530 (India Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

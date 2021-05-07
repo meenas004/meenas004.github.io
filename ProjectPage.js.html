@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: ProjectPage.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: ProjectPage.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import React from 'react';
+import { withRouter } from "react-router";
+import {Grid, Typography, makeStyles, withStyles, Button} from '@material-ui/core';
+import ScrollSnap from 'scroll-snap';
+import * as Layout from './../layout';
+import {SectionsContainer, Section} from 'react-fullpage'
+import "fullpage.js/vendors/scrolloverflow"; // Optional. When using scrollOverflow:true
+import ReactFullpage from "@fullpage/react-fullpage";
+import * as Container from './../container';
+import PropTypes  from 'prop-types';
+import * as d3 from 'd3';
+import GetApiData from './../utils/getApiData';
+import ArrowUpwardIcon from '@material-ui/icons/ArrowUpward';
+import $ from 'jquery';
+import ReactLoading from "react-loading";
+import ScrollUpButton from "react-scroll-up-button";
+import styleJson from './../styles/root';
+import ReactPageScroller from 'react-page-scroller';
+import ReactHtmlParser from 'react-html-parser'; 
+import * as Component from './../components';
+import ScrollElement from './../components/ScrollElement/ScrollElement';
+var Pageable = require('pageable');
+/**
+ * 
+ * @param {json} theme materila ui function to convert json to theme material ui object 
+ */
+const styles = theme => (styleJson)
+
+/**
+ * Function to sort an array
+ * @param {array} array array to be sorted 
+ * @param {key} key 
+ */
+function sortByKey(array, key) {
+  return array.sort(function(a, b) {
+      var x = a[key]; var y = b[key];
+      return ((x &lt; y) ? -1 : ((x > y) ? 1 : 0));
+  });
+}
+
+/**
+ * Component to display storyboard page
+ * @component 
+ * @property {number} visibleItem variable to keep track of the position of the page
+ * @property {json} configJson config data json
+ * @property {boolean} apiCalled variable to track whether api has been called or not
+ */
+
+class ProjectPage extends React.Component {
+    constructor(props){
+        super(props);    
+        this.state={
+            visibleItem: 0, //Variable to keep track of visible item on screen [Element at position 1 is visible by default]
+            configJson: null,
+            apiCalled: false
+        }
+        this.handleScrolling = this.handleScrolling.bind(this)
+    }
+    /**
+     * Function to update visible item
+     * @param {number} index current position index 
+     */
+    handleScrolling(index){
+      this.setState({
+        visibleItem: index
+      })
+    }
+    /**
+     * componentDidMount function to click button on first mount
+     */
+    componentDidMount(){
+      $(document).ready(function(){
+        $('#jugad_button').click()
+      })
+    }
+
+    render(){
+      
+        const {classes} = this.props;
+        document.getElementById('app_container').style.background = 'none'
+        var layoutConfig = null;
+        if(this.state.configJson){
+           layoutConfig = this.state.configJson.api_data.data;
+            layoutConfig = sortByKey(layoutConfig, 'pos');
+            var layoutLen = layoutConfig.length;
+            var normalScroll = []
+            for(let i=0; i&lt;layoutLen; i++){
+              normalScroll.push('#layout_container_' + i);
+              normalScroll.push('#para_div_' + layoutConfig[i].pos )
+            }
+            var defined_color = this.state.configJson.api_data.defined_colors;
+        }
+        var fullpage_api;
+        
+        return(
+            &lt;div>
+            {!this.state.configJson &amp;&amp;
+             &lt;div>
+             &lt;Button id = 'jugad_button' onClick = {async () =>{
+                    if(this.state.apiCalled === false){
+                      let apiOutput = await GetApiData(process.env.REACT_APP_MODE, this.props.configName)
+                      window.configJson = apiOutput
+                      this.setState({
+                          configJson: apiOutput,
+                          apiCalled: true
+                      })
+                  }
+                    
+                }}>&lt;/Button>
+                &lt;div style ={{marginTop: '25vh', marginLeft: '93vh'}}>
+                  &lt;ReactLoading type={'bars'} color={"gray"} width={'20%'} />
+                &lt;/div>
+                &lt;/div>
+                }
+            {this.state.configJson &amp;&amp; 
+              &lt;div className = {classes.root}>
+                &lt;div id = 'onepage'>
+                &lt;Layout.ScrollLayout fullpage_api = {''} layoutConfig = {layoutConfig} configJson = {this.state.configJson} handleScroll={this.handleScrolling}/>
+                &lt;/div>
+                &lt;Container.ChartContainer configName = {this.props.configName} defined_color = {defined_color} visibleItem = {this.state.visibleItem} scroll0 = {0} layoutConfig = {layoutConfig} chartDetails = {layoutConfig.filter((el, i) => {return el.pos === this.state.visibleItem})}/>
+                &lt;div id = 'scroll_to_top_button' className = {classes.button_to_top}>
+                &lt;ArrowUpwardIcon style ={{fill:'white'}}/>
+              &lt;/div>
+                &lt;img id = 'logo_img' src = {require('./../../Pfizer_Logo_Color_RGB.png')} height={'40px'} className= {classes.logo_img}/> {/*selecting logo &amp; positioning it as per user input*/}
+                {&lt;div className = {classes.footer}> &amp;#xa9; 2021 Pfizer Inc. All rights reserved.&lt;/div>} {/* page footer */}
+                
+                {/* Initiating Chart container on outside fullpage container. It is done so to preserve the animations when transistioning from 
+                one chart to another */}
+                
+              &lt;/div>
+            }
+              &lt;/div>
+        )
+    }
+}
+
+export default withStyles(styles)(ProjectPage)</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="ProjectPage.html">ProjectPage</a></li></ul><h3>Global</h3><ul><li><a href="global.html#sortByKey">sortByKey</a></li><li><a href="global.html#styles">styles</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Mon May 03 2021 20:53:15 GMT+0530 (India Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

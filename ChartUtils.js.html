@@ -280,7 +280,7 @@ export const xAxisTickFormat = (x, bandFlag, customFormat, data, reduceTick = fa
   else {
     val = d3.axisBottom(x).tickSizeOuter(0).tickFormat(
       function (d) {
-        return formatString(d)
+        return formatString(d, data.length)
       }).tickValues(reduceTick ? [] : data)
   }
   return val;
@@ -449,7 +449,7 @@ export const show_second_axis = (container, height, width, data, label, margin, 
 export const formatNumber = (d, formatType = undefined) => {
 
   if (typeof d == "string") {
-    return d;
+    return d
   }
   else {
     if (formatType != undefined &amp;&amp; formatType != "time" &amp;&amp; formatType != "NA" &amp;&amp; formatType != 'nan') {
@@ -457,7 +457,7 @@ export const formatNumber = (d, formatType = undefined) => {
       else return d3.format(formatType)(d)
     }
     else if (formatType == "time"){
-      debugger
+      
       return d3.timeFormat('%b %d %y')(d)
     }
     else {
@@ -473,11 +473,18 @@ export const formatNumber = (d, formatType = undefined) => {
  * This function cuts the string
  * @property {string} d string 
  */
-export const formatString = (d) => {
-  var str = d + ''
-  if (str.length >= 12) return str.slice(0, 7) + '...'
-  else return str
+
+export const formatString = (d, num_values=8) => {
+	var slice_len = 7	
+	if(num_values > 8) slice_len = 7
+	else if(num_values > 6 &amp;&amp; num_values &lt;= 8) slice_len = 10
+	else if(num_values > 4 &amp;&amp; num_values &lt;= 6) slice_len = 15
+	else if(num_values > 2 &amp;&amp; num_values &lt;= 4) slice_len = 20
+  else if(num_values &lt;= 2) slice_len = 25	
+  if (d.length > slice_len) return d.slice(0, slice_len) + '...'
+	else return d
 }
+
 
 /**
  * Function to make legends
@@ -489,6 +496,7 @@ export const formatString = (d) => {
  * @property {fraction} opacity Opacity 
  */
 export const show_legend = (legendContainer, data, color_scale, is_hori = false, is_cont = false, opacity = null) => {
+  debugger
   var svg = d3.select(legendContainer).select("svg")
   svg.selectAll("*").remove()
   if (data.length === 1) {
@@ -515,7 +523,7 @@ export const show_legend = (legendContainer, data, color_scale, is_hori = false,
       .style("position", "absolute")
       .style("left", (is_hori ? legendwidth + margin.top + margin.bottom : margin.left) + "px")
       .node();
-    debugger
+    
     if(!canvas) return null
     var ctx = canvas.getContext("2d");
 
@@ -1249,13 +1257,13 @@ export const tooltip_text_formatter = (replaceVals={},xAxisToShow=undefined,yAxi
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Bubble.html">Bubble</a></li><li><a href="BubbleChart.html">BubbleChart</a></li><li><a href="BubbleMap.html">BubbleMap</a></li><li><a href="ChoroplethChart.html">ChoroplethChart</a></li><li><a href="CirclePackedBubble.html">CirclePackedBubble</a></li><li><a href="D3DensityChart.html">D3DensityChart</a></li><li><a href="Funnel.html">Funnel</a></li><li><a href="GroupBarChart.html">GroupBarChart</a></li><li><a href="HeatChart.html">HeatChart</a></li><li><a href="HorizontalStackBarChart.html">HorizontalStackBarChart</a></li><li><a href="IntervalLineChart.html">IntervalLineChart</a></li><li><a href="LineChart.html">LineChart</a></li><li><a href="NetworkChart.html">NetworkChart</a></li><li><a href="SequncesSunburst.html">SequncesSunburst</a></li><li><a href="StackBarChart.html">StackBarChart</a></li><li><a href="SunBurst.html">SunBurst</a></li><li><a href="TreeChart.html">TreeChart</a></li><li><a href="ValueBox.html">ValueBox</a></li><li><a href="ValueBoxChain.html">ValueBoxChain</a></li></ul><h3>Global</h3><ul><li><a href="global.html#addReferenceLine">addReferenceLine</a></li><li><a href="global.html#appear">appear</a></li><li><a href="global.html#BootstrapTooltip">BootstrapTooltip</a></li><li><a href="global.html#calculateLeftMargin">calculateLeftMargin</a></li><li><a href="global.html#createCustomTooltip">createCustomTooltip</a></li><li><a href="global.html#formatNumber">formatNumber</a></li><li><a href="global.html#formatString">formatString</a></li><li><a href="global.html#get_color">get_color</a></li><li><a href="global.html#hideAxes">hideAxes</a></li><li><a href="global.html#hideCustomTooltip">hideCustomTooltip</a></li><li><a href="global.html#init_chart">init_chart</a></li><li><a href="global.html#init_svg">init_svg</a></li><li><a href="global.html#init_xaxis">init_xaxis</a></li><li><a href="global.html#init_yaxis">init_yaxis</a></li><li><a href="global.html#MakeValueBoxes">MakeValueBoxes</a></li><li><a href="global.html#moveCustomTooltip">moveCustomTooltip</a></li><li><a href="global.html#onClickChangeChart">onClickChangeChart</a></li><li><a href="global.html#secondAxisLineChart">secondAxisLineChart</a></li><li><a href="global.html#secondAxisScatterChart">secondAxisScatterChart</a></li><li><a href="global.html#show_legend">show_legend</a></li><li><a href="global.html#show_second_axis">show_second_axis</a></li><li><a href="global.html#show_x">show_x</a></li><li><a href="global.html#show_y">show_y</a></li><li><a href="global.html#showCustomTooltip">showCustomTooltip</a></li><li><a href="global.html#tooltip_text_formatter">tooltip_text_formatter</a></li><li><a href="global.html#useStylesBootstrap">useStylesBootstrap</a></li><li><a href="global.html#xAxisTickFormat">xAxisTickFormat</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#addReferenceLine">addReferenceLine</a></li><li><a href="global.html#appear">appear</a></li><li><a href="global.html#calculateLeftMargin">calculateLeftMargin</a></li><li><a href="global.html#createCustomTooltip">createCustomTooltip</a></li><li><a href="global.html#formatNumber">formatNumber</a></li><li><a href="global.html#formatString">formatString</a></li><li><a href="global.html#get_color">get_color</a></li><li><a href="global.html#hideAxes">hideAxes</a></li><li><a href="global.html#hideCustomTooltip">hideCustomTooltip</a></li><li><a href="global.html#init_chart">init_chart</a></li><li><a href="global.html#init_svg">init_svg</a></li><li><a href="global.html#init_xaxis">init_xaxis</a></li><li><a href="global.html#init_yaxis">init_yaxis</a></li><li><a href="global.html#moveCustomTooltip">moveCustomTooltip</a></li><li><a href="global.html#onClickChangeChart">onClickChangeChart</a></li><li><a href="global.html#secondAxisLineChart">secondAxisLineChart</a></li><li><a href="global.html#secondAxisScatterChart">secondAxisScatterChart</a></li><li><a href="global.html#show_legend">show_legend</a></li><li><a href="global.html#show_second_axis">show_second_axis</a></li><li><a href="global.html#show_x">show_x</a></li><li><a href="global.html#show_y">show_y</a></li><li><a href="global.html#showCustomTooltip">showCustomTooltip</a></li><li><a href="global.html#tooltip_text_formatter">tooltip_text_formatter</a></li><li><a href="global.html#xAxisTickFormat">xAxisTickFormat</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Fri Apr 30 2021 17:19:11 GMT+0530 (India Standard Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Mon May 03 2021 20:38:36 GMT+0530 (India Standard Time)
 </footer>
 
 <script> prettyPrint(); </script>

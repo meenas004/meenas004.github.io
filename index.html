@@ -2,8 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Home</title>
-
+    <title>Interactive Storyboard UI Documentation</title>
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
     <!--[if lt IE 9]>
@@ -17,7 +16,7 @@
 
 <div id="main">
     <h1 class="page-title">Home</h1>
-    <div id ="app-setup">
+    <div id ="app-setup" style="margin-left: 50px;">
         <p style="text-align: left;"><strong><u>Interactive Storyboard Setup</u></strong></p>
         <p><strong><u>App Setup</u></strong></p>
         <p>The application is built on node version 12.16.1 using React version 16.13.1. To run the application, one needs to have node on his/her computer.</p>
@@ -42,11 +41,62 @@
         <ul>
         <li>conda activate dss-dev &amp;&amp; app.bat<strong> (or) </strong>activate dss-dev &amp;&amp; app.bat</li>
     </div>
-    <div id="api-flow">
+    <div id="api-flow" style="margin-left: 50px;">
         <h2>API Flow</h2>
         <img src="./API_flow.jpg">
     </div>
+    <div id="imp-points" style="margin-left: 50px;">
+        <p><strong><u>Uploading the app on DSS</u></strong></p>
+<p>To upload the application on the DSS, we first need to build the application in a way that PUBLIC_URL points to the root folder of the plugin on the DSS. Currently, app is configure for the purpose -&nbsp;</p>
+<ul>
+    <li>Build the application by running &quot;npm run build:dss&quot; command</li>
+    <li>Go to DSS, navigate to &quot;Plugins&quot;, search for &quot;Interactive Storyboard UI&quot;</li>
+    <li>Delete the &quot;my-app&quot; folder from resources subdirectory</li>
+    <li>Create following directory:<ul>
+            <li>my-app &gt; build &gt; static &gt; css, js, media</li>
+        </ul>
+    </li>
+    <li>Upload all the files in the directory in similar way as generated in the build</li>
+    <li>Copy the content from &quot;index.html&quot; and paste into <em>webapps &gt; form-ui-and-story-generator &gt; body.html&nbsp;</em>file</li>
+    <li>Save and refresh the application</li>
+</ul>
+<p><br></p>
+<p><strong><u>Key points related to DSS webapps written in React</u></strong></p>
+<ul>
+    <li>For security reasons, DSS does not allow the webapps to directly access backend APIs.</li>
+    <li>DSS adds some utility functions on top of our application and web apps are supposed to get the API access through this utility layer</li>
+    <li>The utility layer is added only after DOM is fully loaded. This creates a problem for our application because our app needs data from the backend to generate DOM</li>
+    <li>To tackle this, we load an invisible button at first, and click the button through code and make api calls on the button click</li>
+</ul>
+<p><strong><u>Environment Variables</u></strong></p>
+<ul>
+    <li>REACT_APP_MODE - If the variable is set to &quot;dev&quot;, the application runs in the development mode (on local machine)</li>
+    <li>PUBLIC_URL - To make the app DSS friendly, the value is set to &quot;../../resource/my-app/build/&quot; so that the body.html file points to root folder of the plugin on the dss</li>
+</ul>
+<p><strong><u>Other important point</u></strong></p>
+<ul>
+    <li>Sometimes app throws error on &quot;npm install&quot; when it should not. In such cases, following steps should be tried:<ul>
+            <li>Try deleting package-lock.json</li>
+            <li>Try replacing package-lock.json from previous version</li>
+        </ul>
+    </li>
+    <li>In some cases, the app might throw an error while running it. In such cases, try setting SKIP_PREFLIGHT_CHECK=true</li>
+</ul>
+<p><br></p>
+    </div>
+
+    <div id="info-storyboard-diff" style="margin-left: 50px;">
+        <p><strong><u>Additional Comments</u></strong></p>
+        <p>Charting library being used in the two applications, ie, Storyboard UI &amp; Infographic UI is same except-</p>
+    <ul>
+        <li>ShowCustomTooltip &amp; MoveCustomTooltip in mouseover &amp; mousemove events have one additional parameter of chartContainer</li>
+        <li>ShowCustomTooltip &amp; MoveCustomTooltip in chartUtils differ in how they get x &amp; t coordinates of the cursor.&nbsp;</li>
+        <li>shouldComponentUpdate method is used in Infographic UI</li>
+    </ul>
+    <p>To make charting library exactly same, passing additional parameters in storyboard ui is recommended</p>
+    </div>
 </div>
+
 
 <nav>
     <h2><a href="index.html">Home</a></h2>
@@ -82,6 +132,18 @@
         <li><a href="TextInput.html">Text Input</a></li>
         <li><a href="TextArea.html">Text Area</a></li>
         <li><a href="RadioButtonsGroup.html">RadioButtonsGroup</a></li>
+    </ul>
+    <h3>React Elements</h3>
+    <ul>
+        <li><a href="ChartContainer.html">ChartContainer</a></li>
+        <!-- <li><a href="InteractivityContainer."</li> -->
+        <li><a href="ScrollLayout.html">ScrollLayout</a></li>
+        <li><a href="ProjectPage.html">ProjectPage</a></li>
+        <li><a href="ProjectList.html">ProjectList</a></li>
+    </ul>
+    <h3> Infographic UI Elements </h3>
+    <ul>
+        <li><a href="ShowcaseLayout.html">ShowCase Layout </a></li>
     </ul>
     <h3>Global</h3>
     <ul>

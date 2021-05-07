@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: ShowcaseLayout.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: ShowcaseLayout.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import React from 'react';
+import PropTypes from 'prop-types';
+import _ from 'lodash';
+import ReactLoading from 'react-loading';
+import Snackbar from '@material-ui/core/Snackbar';
+import MuiAlert from '@material-ui/lab/Alert';
+import { Navbar, Nav } from 'react-bootstrap';
+import { Responsive, WidthProvider } from 'react-grid-layout';
+import { datacalls } from './dataCalls/datacalls';
+import RenderChart from './components/RenderCharts';
+import ChildInteractivityDriver from './components/ChildInteractivityDriver';
+import $ from 'jquery';
+import 'bootstrap/dist/css/bootstrap.css';
+import './styles.css';
+
+const ResponsiveReactGridLayout = WidthProvider(Responsive);
+
+export function Alert(props) {
+	return &lt;MuiAlert elevation={6} variant="filled" {...props} />;
+}
+
+/**
+ * ShowcaseLayout is the main component in the Infographic UI app. All the other components are migrated from the storyboard ui app.
+ * The component uses 'react-grid-layout' npm libary for drag, drop &amp; resize functionality are enabled using the same library.
+ * @component
+ * @property {string} currentBreakpoint Screen breakpoint
+ * @property {string} compactType whether app needs to be compcat in any direction
+ * @property {boolean} mounted to track whether app is mounted or not
+ * @property {array} layouts.lg array of layout elements. Layout elements define x, y, height &amp; width of a div
+ * @property {boolean} editMode whether app is editable or not
+ * @property {boolean} publishMode whether app is published or not
+ * @property {array} defined_colors Defined colors array
+ * @property {object} chartProperties Chart params given by backend
+ * @property {object} childInteractivity to track which value is selected in dropdown/radio buttons in case of child toggle properties
+ * @property {object} xAxis  to track which value is selected in dropdown/radio buttons in case of dynamic x axis
+ * @property {object} yAxis to track which value is selected in dropdown/radio buttons in case of dynamic y axis
+ * @property {object} filtercolumn to track which value is selected in dropdown/radio buttons in case of filter by lod 
+ * @property {boolean} showSnackbar whether to show snackbar or not
+ * @property {string} snackBarMsg Message to show on snackbar
+ * @property {string} snackBarType Type of the snackbar
+ */
+class ShowcaseLayout extends React.Component {
+	constructor(props) {
+		super(props);
+
+		this.state = {
+			currentBreakpoint: 'lg',
+			compactType: 'vertical',
+			mounted: false,
+			layouts: { lg: [] },
+			editMode: false,
+			publishMode: false,
+			defined_colors: {},
+			chartProperties: {},
+			childInteractivity: {},
+			xAxis: {},
+			yAxis: {},
+			filtercolumn: {},
+			// imageData: null,
+			showSnackbar: false,
+			snackBarMsg: '',
+			snackBarType: ''
+		};
+		this.apiCalled = false;
+
+		this.onBreakpointChange = this.onBreakpointChange.bind(this);
+		this.onLayoutChange = this.onLayoutChange.bind(this);
+		this.changeSelectedCharts = this.changeSelectedCharts.bind(this);
+	}
+
+	/**
+	 * Function to stop component rendering if props do not change
+	 */
+	shouldComponentUpdate(prevProps, nextProps) {
+		if (JSON.stringify(prevProps.chartProperties) === JSON.stringify(nextProps.chartProperties)) {
+			return false
+		}
+		if (JSON.stringify(prevProps.layouts) === JSON.stringify(nextProps.layouts)) {
+			return false
+		}
+		return true
+	}
+
+	/**
+	 * Function to generate layout while rendering the app initially. &lt;br>
+	 * Adds new layouts to existing array if new chart is added and delete if any previously existing chart is deleted
+	 * &lt;p>
+	 * Explanation of various conditions used in the function - 
+	 * &lt;p>
+	 * &lt;li> &lt;strong> (result.data['react_resize_' + j].hasOwnProperty('children') &amp;&amp; JSON.stringify(result.data['react_resize_' + j]['children']) &lt;/strong> - Checks whether toggle children are present with this chart or not.
+	 * &lt;li> &lt;strong> (result.data['react_resize_' + j].hasOwnProperty('legends') &amp;&amp; result.data['react_resize_' + j].legends === true) &lt;/strong> - Whether we need to display with this chart or not
+	 * &lt;li> &lt;strong> ((result.data['react_resize_' + j].hasOwnProperty('x_axis_values') || result.data['react_resize_' + j].hasOwnProperty('y_axis_values'))&lt;/strong> - whether any column is dynamic or not 
+	 * &lt;li> &lt;strong> (result.data['react_resize_' + j].hasOwnProperty('filtercolumn')) &lt;/strong> - whether chart has filter by lod interactivity 
+	 * &lt;br> 
+	 * If any of the above conditions is true, then we will need to render another div for each element
+	 * 
+	 * Following conditions are checked- &lt;br> 
+	 * &lt;li> Whether layout data is present, if data is not present then It will create default layout array  &lt;br>
+	 * &lt;li> If layout data is present and if any new chart/interactivity/legend is added, then it will add new default value for that element. &lt;br>
+	 * &lt;li> If layout data is present and if any existing charts/interactivities/legend is deleted, it will delete the layout corresponding to that element &lt;br> 
+	 * 
+	 * @property {boolean} ifStatic whether the components are supposed to be static or not. If false, components cannot be resized, dragged nor be dropped
+	 */
+	getLayoutState(ifStatic) {
+		if (this.apiCalled === false) {
+			datacalls.getConfigData((result) => {
+				let totalContainersCount = 0
+				let tempLayoutData = [];
+				window.chartProperties = result.data;
+				window.defined_colors = result.defined_colors;
+
+				let objectKeys = Object.keys(result.data);
+				let indexArray = objectKeys.map(str => { return parseInt(str.split('react_resize_')[1]) })
+				indexArray = indexArray.sort((a, b) => a - b);
+				let loopLength = objectKeys.length;
+
+				// To generate the initial default layout
+				for (let k = 0; k &lt; objectKeys.length; k++) {
+					let isLegend = false,
+						isInteractivity = false;
+					let j = indexArray[k];
+					if (result.data['react_resize_' + j].hasOwnProperty('children') &amp;&amp; JSON.stringify(result.data['react_resize_' + j]['children']) !== '{}') {
+						totalContainersCount++;
+						tempLayoutData.push({
+							x: 10,
+							y: 6 * k,
+							h: 6,
+							w: 2,
+							i: 'interactivity_k_' + j.toString(),
+							static: ifStatic,
+						});
+						isInteractivity = true;
+					}
+					if (result.data['react_resize_' + j].hasOwnProperty('legends') &amp;&amp; result.data['react_resize_' + j].legends === true) {
+						totalContainersCount++;
+						tempLayoutData.push({
+							x: 8,
+							y: 6 * k,
+							h: 6,
+							w: 2,
+							i: 'legends_' + j.toString(),
+							static: ifStatic,
+						});
+						isLegend = true;
+					}
+
+					if (result.data['react_resize_' + j].hasOwnProperty('x_axis_values') || result.data['react_resize_' + j].hasOwnProperty('y_axis_values')) {
+						totalContainersCount++;
+						tempLayoutData.push({
+							x: 6,
+							y: 6 * k,
+							h: 6,
+							w: 2,
+							i: 'interactivity_x_' + j.toString(),
+							static: ifStatic
+						});
+					}
+
+					if (result.data['react_resize_' + j].hasOwnProperty('filtercolumn')) {
+						totalContainersCount++;
+						tempLayoutData.push({
+							x: 4,
+							y: 6 * k,
+							h: 6,
+							w: 2,
+							i: 'interactivity_f_' + j.toString(),
+							static: ifStatic,
+						});
+					}
+
+					if (isLegend &amp;&amp; isInteractivity) {
+						totalContainersCount++;
+						tempLayoutData.push({
+							x: 0,
+							y: 6 * k,
+							h: 6,
+							w: 4,
+							i: 'main_chart_' + j.toString(),
+							static: ifStatic,
+						});
+					} else if (isLegend || isInteractivity) {
+						totalContainersCount++;
+						tempLayoutData.push({
+							x: 0,
+							y: 6 * k,
+							h: 6,
+							w: 4,
+							i: 'main_chart_' + j.toString(),
+							static: ifStatic,
+						});
+					} else {
+						totalContainersCount++;
+						tempLayoutData.push({
+							x: 0,
+							y: 6 * k,
+							h: 6,
+							w: 4,
+							i: 'main_chart_' + j.toString(),
+							static: ifStatic,
+						});
+					}
+				}
+				let savedLayout = []
+
+				// To fetch the previous saved layout state
+				datacalls.getDivsData((res) => {
+					if (res.data.length > 0) {
+						// if (res.data.length == totalContainersCount) {
+							if (false) {
+							this.setState({
+								defined_colors: result.defined_colors,
+								chartProperties: result.data,
+								layouts: { lg: res.data }
+							});
+						} else if(true) {
+
+
+							let savedCharts = []
+							let generatedCharts = [], yMax = 0
+							tempLayoutData.forEach((item) => {
+								if (item.i.includes('main_chart_')) {
+									generatedCharts.push(item.i)
+								}
+							})
+							let savedItems = []
+							res.data.forEach((item) => {
+								if (item.i.includes('main_chart_')) {
+									savedCharts.push(item.i)
+								}
+								savedItems.push(item.i);
+								if (item.y > yMax) {
+									yMax = item.y
+								}
+							})
+
+							// To add the newly added charts into the previously saved layout state\
+							
+							let newCharts = generatedCharts;
+							let oldCharts = generatedCharts.filter(x => savedCharts.includes(x));
+							newCharts = newCharts.map(str => { return 'react_resize_' + parseInt(str.split('main_chart_')[1]) })
+							let newChartslayout = []
+							for (let t = 0; t &lt; newCharts.length; t++) {
+								let isLegend = false,
+									isInteractivity = false;
+								let m = parseInt(newCharts[t].split('react_resize_')[1])
+								if (result.data[newCharts[t]].hasOwnProperty('children') &amp;&amp; JSON.stringify(result.data[newCharts[t]]['children']) !== '{}') {
+									if(!savedItems.includes('interactivity_k_' + m.toString())){
+										newChartslayout.push({
+										x: 10,
+										y: yMax + 6 * (t + 1),
+										h: 6,
+										w: 2,
+										i: 'interactivity_k_' + m.toString(),
+										static: ifStatic,
+										});
+								}
+									isInteractivity = true;
+								}
+								if (result.data[newCharts[t]].hasOwnProperty('legends') &amp;&amp; result.data[newCharts[t]].legends === true){
+									if(!savedItems.includes('legends_' + m.toString())){
+										newChartslayout.push({
+											x: 8,
+											y: yMax + 6 * (t + 1),
+											h: 6,
+											w: 2,
+											i: 'legends_' + m.toString(),
+											static: ifStatic,
+										});
+										isLegend = true;
+									}
+									
+								}
+
+								if (result.data[newCharts[t]].hasOwnProperty('x_axis_values') || result.data[newCharts[t]].hasOwnProperty('y_axis_values')) {
+									if(!savedItems.includes('interactivity_x_' + m.toString())){
+										newChartslayout.push({
+											x: 6,
+											y: yMax + 6 * (t + 1),
+											h: 6,
+											w: 2,
+											i: 'interactivity_x_' + m.toString(),
+											static: ifStatic
+										});
+									}
+									
+								}
+
+								if (result.data[newCharts[t]].hasOwnProperty('filtercolumn')) {
+									if(!savedItems.includes('interactivity_f_' + m.toString())){
+										newChartslayout.push({
+											x: 4,
+											y: yMax + 6 * (t + 1),
+											h: 6,
+											w: 2,
+											i: 'interactivity_f_' + m.toString(),
+											static: ifStatic,
+										});
+									}
+									
+								}
+
+								if (isLegend &amp;&amp; isInteractivity) {
+									if(!oldCharts.includes('main_chart_' + m.toString())){
+										newChartslayout.push({
+											x: 0,
+											y: yMax + 6 * (t + 1),
+											h: 6,
+											w: 4,
+											i: 'main_chart_' + m.toString(),
+											static: ifStatic,
+										});
+									}
+									
+								} else if (isLegend || isInteractivity) {
+									if(!oldCharts.includes('main_chart_' + m.toString())){
+										newChartslayout.push({
+											x: 0,
+											y: yMax + 6 * (t + 1),
+											h: 6,
+											w: 4,
+											i: 'main_chart_' + m.toString(),
+											static: ifStatic,
+										});
+									}
+								} else {
+									if(!oldCharts.includes('main_chart_' + m.toString())){
+										newChartslayout.push({
+											x: 0,
+											y: yMax + 6 * (t + 1),
+											h: 6,
+											w: 4,
+											i: 'main_chart_' + m.toString(),
+											static: ifStatic,
+										});
+									}
+								}
+							}
+							let finalLayout = [...res.data, ...newChartslayout]
+							for(let v =0; v &lt;finalLayout.length; v++){
+								let layoutItem = finalLayout[v];
+								let id = layoutItem.i;
+								if(id.includes('main_chart_')){
+									let divPos = id.split('main_chart_')[1]
+									if(!objectKeys.includes('react_resize_' + divPos)){
+										finalLayout[v] = null;
+									}
+								} else if(id.includes('legends_')){
+									let divPos = id.split('legends_')[1];
+									let configKey = 'react_resize_' + divPos;
+									if(!result.data[configKey].hasOwnProperty('legends') || result.data[configKey].legends === false){
+										finalLayout[v] = null;
+									}
+								} else if(id.includes('interactivity_k_')){
+									let divPos = id.split('interactivity_k_')[1];
+									let configKey = 'react_resize_' + divPos;
+									if( result.data[configKey] &amp;&amp; (!result.data[configKey].hasOwnProperty('children') || JSON.stringify(result.data[configKey]['children']) === '{}')){
+										finalLayout[v] = null;
+									}
+								} else if(id.includes('interactivity_x_')){
+									let divPos = id.split('interactivity_x_')[1];
+									let configKey = 'react_resize_' + divPos;
+									if(!result.data[configKey].hasOwnProperty('x_axis_values') &amp;&amp; !result.data[configKey].hasOwnProperty('y_axis_values')){
+										finalLayout[v] = null;
+									}
+								} else if(id.includes('interactivity_f_')){	
+									let divPos = id.split('interactivity_f_')[1];
+									let configKey = 'react_resize_' + divPos;
+									if(!result.data[configKey].hasOwnProperty('filtercolumn')){
+										finalLayout[v] = null;	
+									}
+								}
+							}
+							finalLayout = finalLayout.filter(function(x){
+								return x !== null
+							})
+							this.setState({
+								defined_colors: result.defined_colors,
+								chartProperties: result.data,
+								layouts: { lg: finalLayout }
+							});
+						}
+					} else {
+						this.setState({
+							defined_colors: result.defined_colors,
+							chartProperties: result.data,
+							layouts: { lg: tempLayoutData },
+						})
+					}
+				}, this.props.configName);
+			}, this.props.configName);
+			this.setState({ mounted: true, editMode: true, publishMode: false });
+			this.apiCalled = true
+		}
+	}
+
+
+	/**
+	 * This function generates the DOM - &lt;br>
+	 * It generates the DOM according the "i" property- &lt;br>
+	 * &lt;li> interactivity_k_ - Toggle children interactivity
+	 * &lt;li> interactivity_x_ - Dynamic x/y axis 
+	 * &lt;li> interactivity_f_ - Filter by lod interactivity
+	 * &lt;li> main_chart_ - Chart properties
+	 * &lt;li> legends_ - Legend container
+	 * 
+	 * The function filters the different types of layouts (depending upon "i" of the layout) and then pushes the JSX element in an array.&lt;br>
+	 * At the end,  the function returns the entire array to the render method
+	 * @property {object} that context
+	 */
+	generateDOM(that) {
+		const chartProps = this.state.chartProperties;
+		const { defined_colors, editMode } = this.state;
+		let layoutState = JSON.parse(JSON.stringify(this.state.layouts.lg));
+
+		let layoutState_charts = layoutState.filter(function (l) {
+			return !(l.i.includes('interactivity_k_') || l.i.includes('interactivity_x_') || l.i.includes('interactivity_f_') || l.i.includes('legends_'))
+		})
+
+		let layoutState_interactivity = layoutState.filter(function (l) {
+			return l.i.includes('interactivity_k_');
+		});
+		let layoutState_legends = layoutState.filter(function (l) {
+			return l.i.includes('legends_');
+		});
+
+		let layoutState_filtercolumn = layoutState.filter(function (l) {
+			return l.i.includes('interactivity_f_')
+		})
+
+		let layoutState_xaxis = layoutState.filter(function (l) {
+			return l.i.includes('interactivity_x_')
+		})
+
+		let retVal = _.map(layoutState_charts, function (l, i) {
+			let j = l.i.split('main_chart_')[1]
+			let divId = 'react_resize_' + j;
+			let selectedChart = that.state.childInteractivity[divId]
+			// let imgData = that.state.imageData;
+			var divChartParams = JSON.parse(JSON.stringify(chartProps))[divId];
+			var chartParams = JSON.parse(JSON.stringify(divChartParams))
+			if (!selectedChart || selectedChart === 'parent') {
+			} else {
+				chartParams = chartProps[divId].children[selectedChart]
+			}
+
+			if (divChartParams.x_axis_values || divChartParams.y_axis_values) {
+				if (divChartParams.x_axis_values.length !== 0 &amp;&amp; (selectedChart === 'parent' || !selectedChart)) {
+					let selectedXAxis = divChartParams.x_axis_values[0]
+					let selectedYAxis = divChartParams.y_axis_values[0]
+					if (that.state.xAxis[divId]) selectedXAxis = that.state.xAxis[divId]
+					if (that.state.yAxis[divId]) selectedYAxis = that.state.yAxis[divId]
+					chartParams = that.MakeAxis(JSON.parse(JSON.stringify(chartParams)), selectedXAxis, selectedYAxis)
+					let x_axis_format = divChartParams['x_axis_format'];
+					if(x_axis_format) chartParams['x_axis_format'] = x_axis_format[selectedXAxis];
+					let y_axis_format = divChartParams['y_axis_format'];
+					if(y_axis_format) chartParams['y_axis_format'] = y_axis_format[selectedYAxis];
+					chartParams['x_axis_label'] = selectedXAxis;
+					chartParams['y_axis_label'] = selectedYAxis;
+				}
+
+			}
+
+			let columnFilterValue = null;
+			if (divChartParams.filtercolumn &amp;&amp; (selectedChart === 'parent' || !selectedChart)) {
+				let filterValues = divChartParams['filtervalues']
+				columnFilterValue = filterValues[0]
+				if (that.state.filtercolumn[divId]) columnFilterValue = that.state.filtercolumn[divId]
+				chartParams = that.filterChartData(JSON.parse(JSON.stringify(chartParams)), divChartParams.filtercolumn, columnFilterValue)
+			}
+
+			let reactResizeStyle = '';
+			if (l.static) {
+				reactResizeStyle = 'publishModeStyle static';
+			} else {
+				reactResizeStyle = 'editModeStyle';
+			}
+			let legendId = 'legends_' + j;
+			return (
+				&lt;div
+					key={l.i}
+					id={divId}
+					className={reactResizeStyle}
+					style={{ margin: '20px 20px 20px 20px' }}
+				>
+					&lt;RenderChart
+						chartParams={chartParams}
+						height={40 * l.h}
+						legendContainer={legendId}
+						width={(window.innerWidth / 12) * l.w - 100}
+						divId={'#' + divId}
+						defined_colors={defined_colors}
+						srcURL={l.srcURL ? l.srcURL : ''}
+					/>
+				&lt;/div>
+			);
+
+		});
+
+		let interactivityLayout = _.map(layoutState_interactivity, function (l, i) {
+			let j = l.i.split('interactivity_k_')[1];
+			let chartDivID = 'react_resize_' + j.toString();
+			let chart_props = chartProps[chartDivID]
+			
+			if(chartProps.hasOwnProperty(chartDivID)){
+				let attachmentID = chart_props['some_variable']
+				let ifButton = chart_props.button_or_dropdown === 'button'
+				let children = chart_props['children']
+				let childKey = Object.keys(children)
+				let options = [{ label: chart_props['title'], value: 'parent' }]
+				childKey.map(cKey => {
+					options.push({ label: cKey, value: cKey })
+				})
+				let reactResizeStyle = '';
+				if (l.static) {
+					reactResizeStyle = 'publishModeStyle static';
+				} else {
+					reactResizeStyle = 'editModeStyle';
+				}
+				return &lt;div id={l.i} className={reactResizeStyle} style={{ margin: '20px' }} key={l.i}>&lt;ChildInteractivityDriver attachmentID = {attachmentID} chartId={chartDivID} handleChange={that.changeSelectedCharts} isRadio={ifButton} label={'Select Chart'} options={options} />&lt;/div>
+			} else {
+				return undefined
+			}
+		})
+		interactivityLayout = interactivityLayout.filter((el) => {
+			return el !== undefined
+		}
+		)
+
+		let legendsLayout = _.map(layoutState_legends, function (l, i) {
+			let reactResizeStyle = '';
+			if (l.static) {
+				reactResizeStyle = 'publishModeStyle static';
+			} else {
+				reactResizeStyle = 'editModeStyle';
+			}
+			return &lt;div id={l.i} key={l.i} className={reactResizeStyle} style={{ margin: '20px', padding: '10px' }} >&lt;/div>;
+		});
+
+		let xaxis = _.map(layoutState_xaxis, function (l, i) {
+			let j = l.i.split('interactivity_x_')[1];
+			debugger
+			let chartDivID = 'react_resize_' + j.toString();
+			let chart_props = chartProps[chartDivID]
+			let attachmentID = chart_props['some_variable']
+			
+			let xVals = chart_props['x_axis_values']
+			let xOptions = []
+			xVals.map(cKey => {
+				xOptions.push({ label: cKey, value: cKey })
+			})
+			let yVals = chart_props['y_axis_values']
+			let yOptions = []
+			yVals.map(cKey => {
+				yOptions.push({ label: cKey, value: cKey })
+			})
+			let reactResizeStyle = '';
+			if (l.static) {
+				reactResizeStyle = 'publishModeStyle static';
+			} else {
+				reactResizeStyle = 'editModeStyle';
+			}
+
+			return (
+				&lt;div id={l.i} className={reactResizeStyle} style={{ margin: '20px', display: 'grid' }} key={l.i}>
+					{xOptions.length > 1 &amp;&amp; &lt;div>&lt;ChildInteractivityDriver attachmentID = {attachmentID} chartId={chartDivID} handleChange={that.handleXAxis} isRadio={false} label={'Select X-Axis'} options={xOptions} />&lt;/div>}
+					{xOptions.length > 1 &amp;&amp; &lt;div>&lt;ChildInteractivityDriver attachmentID = {attachmentID} chartId={chartDivID} handleChange={that.handleYAxis} isRadio={false} label={'Select Y-Axis'} options={yOptions} /> &lt;/div>}
+				&lt;/div>)
+		})
+
+		let interactivity_filtercolumn = _.map(layoutState_filtercolumn, function (l, i) {
+			let j = l.i.split('interactivity_f_')[1];
+			let chartDivID = 'react_resize_' + j.toString();
+			let chart_props = chartProps[chartDivID]
+			if(!chart_props) return undefined
+			let attachmentID = chart_props['some_variable'];
+			
+			let fil_vals = chart_props['filtervalues']
+			let filterOptions = []
+			fil_vals.map(fKey => {
+				filterOptions.push({ label: fKey + "", value: fKey + "" })
+			})
+			let reactResizeStyle = '';
+			if (l.static) {
+				reactResizeStyle = 'publishModeStyle static';
+			} else {
+				reactResizeStyle = 'editModeStyle';
+			}
+
+			return (
+				&lt;div id={l.i} className={reactResizeStyle} style={{ margin: '20px', display: 'grid' }} key={l.i}>
+					&lt;ChildInteractivityDriver  attachmentID = {attachmentID} chartId={chartDivID} handleChange={that.handleFilterColumn} isRadio={false} label={'FilterChart'} options={filterOptions} />
+				&lt;/div>
+			)
+
+		})
+
+		interactivity_filtercolumn = interactivity_filtercolumn.filter((el) => {return el !== undefined})
+
+		retVal.push(...interactivityLayout, ...xaxis, ...interactivity_filtercolumn, ...legendsLayout);
+		return retVal;
+	}
+
+	/**
+	 * Chart toggle handler function
+	 * @property {string} chartID - Id of the chart to be changed (main_chart_*) 
+	 * @property {string} selectedOption - Option selected by user
+	 * @property {string} attachmentID - chart attached to current chartID chart
+	 */
+	changeSelectedCharts(chartID, selectedOption, attachmentID) {
+		let selectedChart = selectedOption.value;
+		let jsonInteractivity = JSON.parse(JSON.stringify(this.state.childInteractivity))
+		jsonInteractivity[chartID] = selectedChart
+		
+		if(attachmentID){
+			jsonInteractivity[attachmentID] = selectedChart
+		}
+		this.setState({
+			childInteractivity: jsonInteractivity
+		})
+	}
+
+	/**
+	 * Dynamic axis handlre
+	 * @property {object} config config data for the chart
+	 * @property {string} xAxis x axis column selected by the user 
+	 * @property {string} yAxis y axis column selected by the user 
+	 */
+	MakeAxis(config, xAxis, yAxis) {
+		var data = config.data;
+		data = data.map(obj => {
+			if (obj.hasOwnProperty(xAxis) &amp;&amp; xAxis) {
+				obj.x_axis = obj[xAxis];
+			}
+			if (obj.hasOwnProperty(yAxis) &amp;&amp; xAxis) {
+				obj.y_axis = obj[yAxis];
+			}
+			return (obj)
+		})
+		data = data.filter(function (obj) {
+			return obj.x_axis !== undefined &amp;&amp; obj.y_axis !== undefined;
+		})
+		config.data = data;
+		return (config)
+	}
+
+	/**
+	 * Function to filter data based on a column name &amp; value
+	 * @property {object} config chart data
+	 * @property {string} filterColumn name of the column to be filtered
+	 * @property {string} filterValue filter value
+	 */
+	filterChartData(config, filterColumn, filterValue) {
+		if (filterValue === null) return (config);
+		var data = config.data;
+		var new_data = data.filter(function (i, n) {
+			return i[filterColumn] == filterValue
+		})
+		config.data = new_data;
+		return (config);
+	};
+	/**
+	 * Filter by lod handler
+	 * @param {string} chartID - chart ID (main_chart_*) format 
+	 * @param {string} selectedOption - option selected by the user
+	 * @param {string} attachmentID - attachment ID, chart with attachmentID will be also be filtered along with chartID chart
+	 */
+	handleFilterColumn = (chartID, selectedOption, attachmentID) => {
+		let selectedValue = selectedOption.value;
+		let filterColumn = JSON.parse(JSON.stringify(this.state.filtercolumn))
+		
+		filterColumn[chartID] = selectedValue
+		if(attachmentID){
+			filterColumn[attachmentID] = selectedValue
+		}
+		this.setState({
+			filtercolumn: filterColumn
+		});
+	};
+
+	/**
+	 * Function to handle dynamic x axis
+	 */
+	handleXAxis = (chartID, selectedOption, attachmentID) => {
+		let selectedAxis = selectedOption.value;
+		let xInteractivity = JSON.parse(JSON.stringify(this.state.xAxis))
+		xInteractivity[chartID] = selectedAxis
+		
+		if(attachmentID){
+			xInteractivity[attachmentID] = selectedAxis
+		}
+		this.setState({
+			xAxis: xInteractivity
+		});
+	};
+
+	/**
+	 * Function to handle dynamic y axis
+	 * 
+	 */
+	handleYAxis = (chartID, selectedOption, attachmentID) => {
+		let selectedAxis = selectedOption.value;
+		let yInteractivity = JSON.parse(JSON.stringify(this.state.yAxis));
+		yInteractivity[chartID] = selectedAxis;
+		if(attachmentID){
+			yInteractivity[attachmentID] = selectedAxis
+		}
+		this.setState({
+			yAxis: yInteractivity
+		});
+	};
+
+	/**
+	 * Method to change the size of the visualization with respect to the react-resize blocks
+	 * @param {array} layout layout array passed by react-grid-layout
+	 */
+	setLayoutOnResize(layout) {
+		this.setState({
+			layouts: {
+				lg: layout,
+			},
+		});
+	}
+
+	/**
+	 * Method for the breakpoint change of the screen size
+	 */
+	onBreakpointChange(breakpoint) {
+		this.setState({
+			currentBreakpoint: breakpoint,
+		});
+	}
+
+	/**
+	 * To call on layout change
+	 */
+	onLayoutChange(layout, layouts) {
+		this.props.onLayoutChange(layout, layouts);
+	}
+
+	/**
+	 * Method to save current layout state to the backend
+	 */
+	saveCurrentLayoutState = () => {
+		datacalls.postDivsData((res) => {
+			this.setState({
+				snackBarMsg: 'Data Saved Successfully',
+				showSnackbar: true,
+				snackBarType: 'success'
+			})
+		}, this.state.layouts.lg, this.props.configName);
+	};
+
+	/**
+	 * Method to change the re-sizable &amp; draggable block's state
+	 * @param {boolean} blocksState whether the element is going to be static or not. Static elements cannot be moved, resized or dragged
+	 */
+	changeBlocksState = (blocksState) => {
+		let layoutState = JSON.parse(JSON.stringify(this.state.layouts.lg))
+		layoutState.forEach((item) => {
+			item.static = blocksState;
+		});
+		this.setState({
+			layouts: { lg: layoutState }
+		})
+	};
+
+	/**
+	 * Method to change the application state to edit mode
+	 */
+	changeEditModeHandler = () => {
+		this.setState({
+			editMode: true,
+			publishMode: false,
+		});
+		this.changeBlocksState(false);
+	};
+
+	/**
+	 *  Method to save &amp; preview the current layout state
+	 */
+	publishCurrentStateHandler = async () => {
+		this.setState({
+			publishMode: true,
+			editMode: false,
+		}, async () => {
+			await this.changeBlocksState(true);
+			this.saveCurrentLayoutState();
+		});
+		
+	};
+
+	/**
+	 * To close the snackbar
+	 */
+	handleCloseSnackBar = (event, reason) => {
+		if (reason === 'clickaway') {
+			return;
+		}
+
+		this.setState({
+			showSnackbar: false
+		})
+	};
+
+	render() {
+		
+		document.getElementById('app_container').style.background = 'none'
+
+		$(document).ready(function () {
+			$('#id_layout').click();
+			$('#id_layout').unbind('click');
+		});
+		return (
+			&lt;React.Fragment>
+				{JSON.stringify(this.state.chartProperties) != JSON.stringify({}) &amp;&amp; (
+					&lt;div>
+						{this.props.ifStatic &amp;&amp; &lt;React.Fragment>
+							&lt;Navbar collapseOnSelect expand="lg" bg="dark" variant="dark" className="fixed-navbar">
+								&lt;Navbar.Brand href="/" className="app-label">
+									&lt;img style={{ width: '90px', marginRight: '20px' }} src={require('./forms/Pfizer_Logo_White_RGB.png')} />
+								&lt;/Navbar.Brand>
+								&lt;Navbar.Toggle aria-controls="responsive-navbar-nav" />
+								&lt;Navbar.Collapse id="responsive-navbar-nav">
+									&lt;Nav className="btns-container">
+										&lt;button className="form-app-btns" onClick={this.saveCurrentLayoutState}>Save &lt;i className="btns-icons fa fa-cloud" aria-hidden="true">&lt;/i>&lt;/button>
+										&lt;button className="form-app-btns" onClick={this.changeEditModeHandler} style={{ marginLeft: '10px' }}>Edit &lt;i className="btns-icons fa fa-pencil" aria-hidden="true">&lt;/i>&lt;/button>
+										&lt;button className="form-app-btns" style={{ marginLeft: '10px' }} onClick={this.publishCurrentStateHandler}>Save &amp; Preview &lt;i className="btns-icons fa fa-upload" aria-hidden="true">&lt;/i>&lt;/button>
+									&lt;/Nav>
+								&lt;/Navbar.Collapse>
+							&lt;/Navbar>
+						&lt;/React.Fragment>}
+
+						&lt;Snackbar open={this.state.showSnackbar} autoHideDuration={3000} onClose={this.handleCloseSnackBar} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
+							&lt;Alert onClose={this.handleCloseSnackBar} severity={this.state.snackBarType}>
+								{this.state.snackBarMsg}
+							&lt;/Alert>
+						&lt;/Snackbar>
+
+						&lt;ResponsiveReactGridLayout
+							{...this.props}
+							layouts={this.state.layouts}
+							onBreakpointChange={this.onBreakpointChange}
+							onLayoutChange={this.onLayoutChange}
+							measureBeforeMount={false}
+							useCSSTransforms={this.state.mounted}
+							verticalCompact={false}
+							preventCollision={!this.state.compactType}
+							style={{ background: 'transparent' }}
+							onDragStop={(layout, oldItem, newItem, placeholder, e, element) => {
+								this.setLayoutOnResize(layout);
+							}}
+							className="mr-top-40 mr-bottom-40"
+							onResizeStop={(layout, oldItem, newItem, placeholder, e, element) => {
+								this.setLayoutOnResize(layout);
+							}}
+						>
+							{this.generateDOM(this)}
+						&lt;/ResponsiveReactGridLayout>
+					&lt;/div>
+				)}
+				{JSON.stringify(this.state.chartProperties) === JSON.stringify({}) &amp;&amp; (
+					&lt;div>
+						&lt;button
+							id="id_layout"
+							onClick={() => {
+								this.getLayoutState(this.props.ifStatic);
+							}}
+							style={{ display: 'none' }}
+						>
+							{' '}
+						&lt;/button>
+						&lt;ReactLoading className="app-custom-loader" type={'bars'} color={"gray"} heigh={'20%'} width={'10%'} />
+					&lt;/div>
+				)}
+			&lt;/React.Fragment>
+		);
+	}
+}
+
+// To define the types of the properties
+ShowcaseLayout.propTypes = {
+	onLayoutChange: PropTypes.func.isRequired,
+};
+
+// To set the default properties of the component
+ShowcaseLayout.defaultProps = {
+	className: 'layout',
+	rowHeight: 30,
+	onLayoutChange: function () { },
+	cols: { lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 },
+	initialLayout: [],
+};
+
+export default ShowcaseLayout;
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="ShowcaseLayout.html">ShowcaseLayout</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Fri May 07 2021 10:36:41 GMT+0530 (India Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
